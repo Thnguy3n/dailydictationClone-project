@@ -1,0 +1,100 @@
+version: '3.8'
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  db_volume:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: "D:/Nguyen/Workspace/blue/db_volumns/audio-service-db"
+
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_INIT_LIMIT: 5
+      ZOOKEEPER_SYNC_LIMIT: 2
+      ZOOKEEPER_SERVER_ID: 1
+    ports:
+      - "2181:2181"
+    restart: "on-failure"
+    networks:
+      - internal
+
+  kafka-1:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka-1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    restart: "on-failure"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-1:29092,PLAINTEXT_EXT://localhost:9092
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:29092,PLAINTEXT_EXT://0.0.0.0:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_EXT:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_REPLICA_FETCH_MAX_BYTES: 1048576
+      KAFKA_MESSAGE_MAX_BYTES: 1000000
+    networks:
+      - internal
+
+  audio-service-db:
+    env_file:
+      - secret-key.env
+    image: postgres:latest
+    container_name: audio-service-db
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - internal
+
+  audio-service:
+    build:
+      context: ./audio-service
+      dockerfile: audio-service/Dockerfile
+    image: audio-service:latest
+    container_name: audio-service
+    ports:
+      - "8080:8080"
+    environment:
+      fireBase_BUCKETNAME: ${fireBase_BUCKETNAME}
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      SPRING_JPA_HIBERNATE_DDL_AUTO: ${SPRING_JPA_HIBERNATE_DDL_AUTO}
+      assemblyAI_API_KEY: ${assemblyAI_API_KEY}
+      assemblyAI_TRANSCRIPT_URL: ${assemblyAI_TRANSCRIPT_URL}
+      assemblyAI_UPLOAD_URL: ${assemblyAI_UPLOAD_URL}
+      KAFKA_BOOTSTRAP_SERVER: kafka-1:29092
+    depends_on:
+      - zookeeper
+      - kafka-1
+      - audio-service-db
+    restart: "on-failure"
+    networks:
+      - internal
