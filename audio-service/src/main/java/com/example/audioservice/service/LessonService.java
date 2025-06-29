@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.util.List;
 
 public interface LessonService {
-    ResponseEntity<List<LessonResponse>>getAllLessons();
+    ResponseEntity<List<LessonResponse>>getLessons(Long sectionId);
     ResponseEntity<LessonResponse>addLesson(LessonRequest lessonRequest);
     ResponseEntity<String> audioPath(MultipartFile file) throws IOException;
 

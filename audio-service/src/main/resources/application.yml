@@ -11,13 +11,13 @@ spring:
       minimum-idle: 5
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: create
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
   cloud:
     config:
-      uri: http://config-server:8080
+      uri: http://config-server:8880
   servlet:
     multipart:
       max-file-size: 5MB
@@ -41,3 +41,18 @@ spring:
       auto-commit-interval: 1000
 server:
   port: 8080
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://localhost:8761/eureka
+  instance:
+    instance-id: ${spring.application.name}:${random.int}
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 5
+ffmpeg:
+  path: C:/ffmpeg/bin/ffmpeg.exe
+ffprobe:
+  path: C:/ffmpeg/bin/ffprobe.exe
+temp:
+  audio:
+    directory: C:/temp/audio

@@ -32,6 +32,8 @@ public class ChallengeEntity {
     private Integer orderIndex;
     @Column(name = "isPass")
     private Integer isPass;
+    @Column(name = "audio_segment")
+    private String audioSegmentUrl;
     @ManyToOne
     @JoinColumn(name = "lesson_id")
     private LessonEntity lesson;

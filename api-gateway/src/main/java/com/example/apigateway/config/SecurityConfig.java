@@ -37,9 +37,16 @@ public class SecurityConfig {
         return http
                 .csrf(csrf -> csrf.disable())
                 .authorizeExchange(authorize -> authorize
-                        .pathMatchers("/api/v1/**").permitAll()
-                        .pathMatchers("/api/auth/**").permitAll()
-                        .pathMatchers("/api/admin/**").hasRole("ADMIN")
+                        .pathMatchers(
+                                "/api/auth/**",
+                                "/api/category/list",
+                                "/api/challenge/list",
+                                "/api/challenge/check/**",
+                                "/api/lessons/list",
+                                "/api/sections/list",
+                                "api/topics/list").permitAll()
+                        .pathMatchers("api/category/add").hasAnyRole("ADMIN")
+
                         .anyExchange().authenticated()
                 )
                 .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)

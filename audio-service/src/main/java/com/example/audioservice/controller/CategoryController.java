@@ -1,6 +1,7 @@
 package com.example.audioservice.controller;
 import com.example.audioservice.model.DTO.CategoryDTO;
 import com.example.audioservice.service.CategoryService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,7 +14,7 @@ public class CategoryController {
     private CategoryService categoryService;
 
     @PostMapping("/add")
-    public ResponseEntity<CategoryDTO> addCategory(@RequestBody CategoryDTO categoryDTO) {
+    public ResponseEntity<String> addCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
         return categoryService.addCategory(categoryDTO);
     }
     @GetMapping("/list")

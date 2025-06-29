@@ -1,7 +1,6 @@
 package com.example.userservice.utils;
 
-import com.example.userservice.entity.UserEntity;
-import com.example.userservice.model.UserRequest;
+import com.example.userservice.model.request.UserRequest;
 import jakarta.validation.ConstraintValidator;
 import jakarta.validation.ConstraintValidatorContext;
 import jakarta.validation.ValidationException;

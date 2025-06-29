@@ -1,26 +1,23 @@
 package com.example.apigateway.config;
 
-import com.example.apigateway.service.AuthService;
 import com.example.apigateway.service.JwtService;
-import org.springframework.context.annotation.Lazy;
-import org.springframework.http.ResponseEntity;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.ReactiveSecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
 import reactor.core.publisher.Mono;
 
+import java.util.Collections;
+
 @Component
+@RequiredArgsConstructor
+@Slf4j
 public class JwtFilter implements WebFilter {
-//
-//    private final JwtService jwtService;
-//    private final AuthService authService;
-//
-//    public JwtFilter(JwtService jwtService, @Lazy AuthService authService) {
-//        this.jwtService = jwtService;
-//        this.authService = authService;
-//    }
+    private final JwtService jwtService;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
@@ -30,27 +27,21 @@ public class JwtFilter implements WebFilter {
             String jwtToken = authHeader.substring(7);
 
             try {
-                String username = jwtService.extractUserName(jwtToken);
+                if (jwtService.validateToken(jwtToken)) {
+                    log.info("Token is valid");
+                    String username = jwtService.extractUsername(jwtToken);
+                    log.info("Username from token: {}", username);
 
-                if (username != null && !username.isEmpty()) {
-                    return authService.getUserDetails(username)
-                            .map(ResponseEntity::getBody)
-                            .filter(userDetails -> userDetails != null && jwtService.validateToken(jwtToken, userDetails))
-                            .doOnNext(userDetails -> {
-                                UsernamePasswordAuthenticationToken authenticationToken =
-                                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                                exchange.getAttributes().put("authentication", authenticationToken);
-                            })
-                            .then(chain.filter(exchange))
-                            .onErrorResume(ex -> {
-                                return chain.filter(exchange);
-                            });
+                    UsernamePasswordAuthenticationToken auth =
+                            new UsernamePasswordAuthenticationToken(username, null, Collections.emptyList());
+
+                    return chain.filter(exchange)
+                            .contextWrite(ReactiveSecurityContextHolder.withAuthentication(auth));
                 }
             } catch (Exception e) {
-                return chain.filter(exchange);
+                log.error("Token validation failed", e);
             }
         }
-
         return chain.filter(exchange);
     }
 }

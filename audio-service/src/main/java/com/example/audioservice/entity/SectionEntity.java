@@ -26,6 +26,6 @@ public class SectionEntity {
     @ManyToOne
     @JoinColumn(name = "topic_id")
     private TopicEntity topicEntity;
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL,mappedBy = "sectionEntity")
+    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL,mappedBy = "sectionEntity")
     List<LessonEntity> lessonEntities = new ArrayList<>() ;
 }

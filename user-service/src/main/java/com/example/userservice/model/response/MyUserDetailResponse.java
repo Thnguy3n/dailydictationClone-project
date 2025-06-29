@@ -1,4 +1,4 @@
-package com.example.userservice.model;
+package com.example.userservice.model.response;
 
 import lombok.Data;
 

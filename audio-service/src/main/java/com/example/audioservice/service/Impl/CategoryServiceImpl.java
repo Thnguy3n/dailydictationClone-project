@@ -20,10 +20,17 @@ public class CategoryServiceImpl implements CategoryService {
     @Autowired
     private ModelMapper modelMapper;
     @Override
-    public ResponseEntity<CategoryDTO> addCategory(CategoryDTO categoryDTO) {
-        CategoryEntity categoryEntity = modelMapper.map(categoryDTO, CategoryEntity.class) ;
-        categoryRepository.save(categoryEntity);
-        return new ResponseEntity<>(modelMapper.map(categoryEntity, CategoryDTO.class), HttpStatus.CREATED);
+    public ResponseEntity<String> addCategory(CategoryDTO categoryDTO) {
+        try{
+            if (categoryRepository.existsByTitle(categoryDTO.getTitle())) {
+                return new ResponseEntity<>("Category already exists", HttpStatus.CONFLICT);
+            }
+            CategoryEntity categoryEntity = modelMapper.map(categoryDTO, CategoryEntity.class) ;
+            categoryRepository.save(categoryEntity);
+            return new ResponseEntity<>("Add category successful", HttpStatus.CREATED);
+        } catch (Exception e) {
+            return new ResponseEntity<>("Error adding category: " + e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
     }
 
     @Override

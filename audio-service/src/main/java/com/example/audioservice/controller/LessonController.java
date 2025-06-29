@@ -15,8 +15,8 @@ public class LessonController {
     @Autowired
     private LessonService lessonService;
     @GetMapping("/list")
-    public ResponseEntity<List<LessonResponse>> getAllLessons() {
-        return lessonService.getAllLessons();
+    public ResponseEntity<List<LessonResponse>> getAllLessons(@RequestParam Long sectionId) {
+        return lessonService.getLessons(sectionId);
     }
     @PostMapping("/add")
     public ResponseEntity<LessonResponse> addLesson(@RequestBody LessonRequest lessonRequest) {

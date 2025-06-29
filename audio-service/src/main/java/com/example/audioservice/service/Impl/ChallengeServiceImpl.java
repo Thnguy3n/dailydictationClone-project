@@ -4,16 +4,15 @@ import com.example.audioservice.entity.ChallengeEntity;
 import com.example.audioservice.entity.ChallengeJob;
 import com.example.audioservice.entity.LessonEntity;
 import com.example.audioservice.entity.TranscriptJob;
+import com.example.audioservice.model.DTO.AudioSegment;
 import com.example.audioservice.model.DTO.SentenceWithTiming;
 import com.example.audioservice.model.DTO.WordData;
 import com.example.audioservice.model.DTO.WordInfo;
-import com.example.audioservice.model.Response.AssemblyResponse;
-import com.example.audioservice.model.Response.AssemblyWordInfoResponse;
-import com.example.audioservice.model.Response.ChallengeJobResponse;
-import com.example.audioservice.model.Response.ChallengeResponse;
+import com.example.audioservice.model.Response.*;
 import com.example.audioservice.repository.ChallengeJobRepository;
 import com.example.audioservice.repository.ChallengeRepository;
 import com.example.audioservice.repository.LessonRepository;
+import com.example.audioservice.service.AudioProcessingService;
 import com.example.audioservice.service.ChallengeService;
 import com.example.audioservice.utils.TextSegmentationUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -46,6 +45,8 @@ public class ChallengeServiceImpl implements ChallengeService {
     private final ObjectMapper objectMapper;
     private final ChallengeJobRepository challengeJobRepository;
     private static final Pattern LINE_PATTERN = Pattern.compile("^(\\d+)\\.\\s*(.*)$");
+    private final AudioProcessingService audioProcessingService;
+
     @Override
     public ResponseEntity<String> addChallenge(String answerKey, Long lessonId) {
         LessonEntity lesson = lessonRepository.findById(lessonId)
@@ -164,6 +165,8 @@ public class ChallengeServiceImpl implements ChallengeService {
         }
     }
 
+
+
     @KafkaListener(topics = "transcript-responses", groupId = "challenge-group" , containerFactory = "challengeKafkaListenerContainerFactory")
     public void handleTranscriptResponse(
             @Header("kafka_receivedMessageKey") String challengeJobId,
@@ -191,7 +194,7 @@ public class ChallengeServiceImpl implements ChallengeService {
                     .collect(Collectors.toList());
 
             AssemblyResponse response = objectMapper.readValue(jobOpt.get().getResponsePayload(), AssemblyResponse.class);
-
+    
             List<AssemblyWordInfoResponse> words = response.getWords();
             Map<String, SentenceWithTiming> matchingSequences = findMatchingSequences(fullSentences, words);
 
@@ -336,5 +339,43 @@ public class ChallengeServiceImpl implements ChallengeService {
             throw new ResourceNotFoundException("Challenge job not found with id: " + jobId);
         }
     }
-
+    @Override
+    public ResponseEntity<List<AudioSegmentResponse>> segmentAudioForChallenges(Long lessonId) throws Exception {
+        LessonEntity lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lesson not found"));
+        List<ChallengeEntity> challenges = challengeRepository.findByLesson_Id(lessonId);
+        if (challenges.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No challenges found for lesson");
+        }
+        List<AudioSegment> segments = challenges.stream()
+                .map(challenge -> AudioSegment.builder()
+                        .challengeId(challenge.getId())
+                        .lessonId(lessonId)
+                        .orderIndex(challenge.getOrderIndex())
+                        .fullSentence(challenge.getFullSentence())
+                        .startTime(challenge.getStartTime())
+                        .endTime(challenge.getEndTime())
+                        .fileName(generateFileName(challenge))
+                        .build())
+                .collect(Collectors.toList());
+        List<AudioSegmentResponse> responses = audioProcessingService.segmentAudio(
+                lesson.getAudioPath(), segments
+        );
+        for (AudioSegmentResponse response : responses) {
+            if ("SUCCESS".equals(response.getStatus())) {
+                ChallengeEntity challenge = challengeRepository.findById(response.getChallengeId())
+                        .orElse(null);
+                if (challenge != null) {
+                    challenge.setAudioSegmentUrl(response.getAudioUrl());
+                    challengeRepository.save(challenge);
+                }
+            }
+        }
+        return ResponseEntity.ok(responses);
+    }
+    private String generateFileName(ChallengeEntity challenge) {
+        return String.format("challenge_%d_%s",
+                challenge.getId(),
+                challenge.getFullSentence().replaceAll("[^a-zA-Z0-9]", "_"));
+    }
 }

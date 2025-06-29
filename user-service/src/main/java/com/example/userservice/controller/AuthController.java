@@ -1,14 +1,12 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.model.AuthResponse;
-import com.example.userservice.model.UserRequest;
-import com.example.userservice.model.UserResponse;
+import com.example.userservice.model.response.AuthResponse;
+import com.example.userservice.model.request.UserRequest;
+import com.example.userservice.model.response.UserResponse;
 import com.example.userservice.service.AuthService;
-import com.example.userservice.service.JwtService;
 import com.example.userservice.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,7 +19,6 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
     private final AuthService authService;
     private final UserService userService;
-    private final JwtService jwtService;
     @PostMapping("/register")
     public ResponseEntity<UserResponse> register(@Valid @RequestBody UserRequest userRequest)  {
         return authService.registerUser(userRequest);

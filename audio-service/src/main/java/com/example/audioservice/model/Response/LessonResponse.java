@@ -5,6 +5,5 @@ import lombok.Data;
 @Data
 public class LessonResponse {
     private String title;
-    private String audioPath;
-    private String transcript;
+    private Integer countChallenge;
 }

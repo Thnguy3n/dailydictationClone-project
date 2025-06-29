@@ -1,9 +1,12 @@
 package com.example.audioservice.controller;
 
 import com.example.audioservice.model.Request.ChallengeRequest;
+import com.example.audioservice.model.Response.AudioSegmentResponse;
 import com.example.audioservice.model.Response.ChallengeJobResponse;
 import com.example.audioservice.model.Response.ChallengeResponse;
+import com.example.audioservice.service.AudioProcessingService;
 import com.example.audioservice.service.ChallengeService;
+import lombok.RequiredArgsConstructor;
 import okhttp3.Challenge;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,12 +16,11 @@ import java.util.Map;
 
 @RestController(value = "addChallengeOfAdmin")
 @RequestMapping("/api/challenge")
+@RequiredArgsConstructor
 public class ChallengeController {
     private final ChallengeService challengeService;
+    private final AudioProcessingService audioProcessingService;
 
-    public ChallengeController(ChallengeService challengeService) {
-        this.challengeService = challengeService;
-    }
 
     @PostMapping("/add")
     public ResponseEntity<String> addChallenge(@RequestBody String answerKey,
@@ -39,5 +41,14 @@ public class ChallengeController {
             @PathVariable Long challengeId,
             @RequestBody List<String> userAnswers) {
         return challengeService.checkUserAnswer(challengeId, userAnswers);
+    }
+    @PostMapping("/segment-audio")
+    public ResponseEntity<List<AudioSegmentResponse>> segmentAudioForChallenges(
+            @RequestParam Long lessonId) {
+        try {
+            return challengeService.segmentAudioForChallenges(lessonId);
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

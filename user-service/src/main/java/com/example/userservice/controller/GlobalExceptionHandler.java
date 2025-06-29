@@ -1,6 +1,6 @@
 package com.example.userservice.controller;
 
-import com.example.userservice.model.ErrorResponse;
+import com.example.userservice.model.response.ErrorResponse;
 import jakarta.validation.ValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

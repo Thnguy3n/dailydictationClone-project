@@ -8,6 +8,7 @@ import com.example.audioservice.repository.SectionRepository;
 import com.example.audioservice.service.LessonService;
 import com.google.cloud.storage.*;
 import com.google.firebase.cloud.StorageClient;
+import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -25,22 +26,31 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
+@RequiredArgsConstructor
 public class LessonServiceImpl implements LessonService {
     private final LessonRepository lessonRepository;
     private final SectionRepository sectionRepository;
     private final ModelMapper modelMapper;
-    public LessonServiceImpl(LessonRepository lessonRepository, SectionRepository sectionRepository, ModelMapper modelMapper) {
-        this.lessonRepository = lessonRepository;
-        this.sectionRepository = sectionRepository;
-        this.modelMapper = modelMapper;
-    }
+
     @Value("${fireBase_BUCKETNAME}")
     private String BucketName;
     @Override
-    public ResponseEntity<List<LessonResponse>> getAllLessons() {
-        List<LessonEntity> lessonEntities = lessonRepository.findAll();
+    public ResponseEntity<List<LessonResponse>> getLessons(Long sectionId) {
+        List<LessonEntity> lessonEntities = lessonRepository.findAllBySectionEntity_Id(sectionId);
+        if (lessonEntities.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No lessons found for the given section ID");
+        }
         List<LessonResponse> lessonResponses = lessonEntities.stream()
-                .map(lessonEntity -> modelMapper.map(lessonEntity,LessonResponse.class))
+                .map(lessonEntity -> {
+                    LessonResponse lessonResponse = new LessonResponse();
+                    lessonResponse.setTitle(lessonEntity.getTitle());
+                    if (lessonEntity.getChallengeEntities() != null) {
+                        lessonResponse.setCountChallenge(lessonEntity.getChallengeEntities().size());
+                    }else {
+                        lessonResponse.setCountChallenge(0);
+                    }
+                    return lessonResponse;
+                })
                 .collect(Collectors.toList());
         return new ResponseEntity<>(lessonResponses, HttpStatus.OK);
     }
