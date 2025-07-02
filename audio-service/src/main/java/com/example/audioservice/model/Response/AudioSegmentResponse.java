@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class AudioSegmentResponse {
     private Long challengeId;
+    private Integer orderIndex;
     private String fullSentence;
     private String audioUrl;
     private Double startTime;

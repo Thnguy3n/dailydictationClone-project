@@ -9,4 +9,6 @@ public interface ChallengeRepository extends JpaRepository<ChallengeEntity, Long
     List<ChallengeEntity> findByLesson_Id(Long lessonId);
 
     List<ChallengeEntity> findAllByLesson_Id(Long lessonId);
+
+    List<ChallengeEntity> findByLesson_IdOrderByOrderIndex(Long lessonId);
 }

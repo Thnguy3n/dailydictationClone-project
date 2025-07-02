@@ -45,23 +45,19 @@ public class AudioProcessingServiceImpl implements AudioProcessingService {
     public List<AudioSegmentResponse> segmentAudio(String audioUrl, List<AudioSegment> segments) throws Exception {
         List<AudioSegmentResponse> responses = new ArrayList<>();
 
-        // Tạo thư mục temp nếu chưa tồn tại
         Path tempDir = Paths.get(tempAudioDirectory);
         if (!Files.exists(tempDir)) {
             Files.createDirectories(tempDir);
         }
 
-        // Download audio từ Firebase
         String localAudioPath = downloadAudioFromFirebase(audioUrl);
 
         try {
-            // Khởi tạo FFmpeg
             log.debug("Initializing FFmpeg with path: {} and FFprobe with path: {}", ffmpegPath, ffprobePath);
             FFmpeg ffmpeg = new FFmpeg(ffmpegPath);
             FFprobe ffprobe = new FFprobe(ffprobePath);
             FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffprobe);
 
-            // Xử lý từng segment
             for (AudioSegment segment : segments) {
                 try {
                     AudioSegmentResponse response = processAudioSegment(
@@ -91,16 +87,13 @@ public class AudioProcessingServiceImpl implements AudioProcessingService {
                                                      String inputPath,
                                                      AudioSegment segment) throws Exception {
 
-        // Tạo tên file output
        String outputFileName = String.format("challenge_%d_%d.mp3", segment.getLessonId(), segment.getOrderIndex());
         String outputPath = Paths.get(tempAudioDirectory, outputFileName).toString();
 
         try {
-            // Convert milliseconds to seconds for FFmpeg
             double startSeconds = segment.getStartTime() / 1000.0;
             double durationSeconds = (segment.getEndTime() - segment.getStartTime()) / 1000.0;
 
-            // Build FFmpeg command
             FFmpegBuilder builder = new FFmpegBuilder()
                     .setInput(inputPath)
                     .overrideOutputFiles(true)
@@ -113,14 +106,13 @@ public class AudioProcessingServiceImpl implements AudioProcessingService {
                     .setDuration((long)(durationSeconds * 1000), java.util.concurrent.TimeUnit.MILLISECONDS)
                     .done();
 
-            // Execute FFmpeg command
             executor.createJob(builder).run();
 
-            // Upload segment to Firebase
             String segmentUrl = uploadSegmentToFirebase(outputPath, outputFileName);
 
             return AudioSegmentResponse.builder()
                     .challengeId(segment.getChallengeId())
+                    .orderIndex(segment.getOrderIndex())
                     .fullSentence(segment.getFullSentence())
                     .audioUrl(segmentUrl)
                     .startTime(segment.getStartTime())
@@ -176,17 +168,7 @@ public class AudioProcessingServiceImpl implements AudioProcessingService {
         log.info("Segment uploaded successfully: {}", audioUrl);
         return audioUrl;
     }
-    private String generateSegmentFileName(AudioSegment segment) {
-        String sanitizedSentence = segment.getFullSentence()
-                .replaceAll("[^a-zA-Z0-9\\s]", "")
-                .replaceAll("\\s+", "_")
-                .substring(0, Math.min(50, segment.getFullSentence().length()));
 
-        return String.format("challenge_%d_%s_%d.mp3",
-                segment.getChallengeId(),
-                sanitizedSentence,
-                System.currentTimeMillis());
-    }
     private void cleanupTempFile(String filePath) {
         try {
             if (filePath != null && Files.exists(Paths.get(filePath))) {

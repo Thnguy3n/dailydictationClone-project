@@ -1,13 +1,17 @@
 package com.example.audioservice.controller;
 
-import com.example.audioservice.model.Request.ChallengeRequest;
 import com.example.audioservice.model.Response.AudioSegmentResponse;
 import com.example.audioservice.model.Response.ChallengeJobResponse;
 import com.example.audioservice.model.Response.ChallengeResponse;
 import com.example.audioservice.service.AudioProcessingService;
 import com.example.audioservice.service.ChallengeService;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.io.Decoders;
+import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
-import okhttp3.Challenge;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,7 +24,8 @@ import java.util.Map;
 public class ChallengeController {
     private final ChallengeService challengeService;
     private final AudioProcessingService audioProcessingService;
-
+    @Value("${jwt-secret}")
+    private String secretKey;
 
     @PostMapping("/add")
     public ResponseEntity<String> addChallenge(@RequestBody String answerKey,
@@ -38,9 +43,15 @@ public class ChallengeController {
     }
     @PostMapping("/check/{challengeId}")
     public ResponseEntity<Map<String, Object>> checkAnswer(
+            HttpServletRequest request,
             @PathVariable Long challengeId,
             @RequestBody List<String> userAnswers) {
-        return challengeService.checkUserAnswer(challengeId, userAnswers);
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            return challengeService.checkAnswer(challengeId, userAnswers);
+        }
+        String token = header.substring(7);
+        return challengeService.checkUserAnswer(challengeId, userAnswers, getUsernameFromToken(token));
     }
     @PostMapping("/segment-audio")
     public ResponseEntity<List<AudioSegmentResponse>> segmentAudioForChallenges(
@@ -51,4 +62,13 @@ public class ChallengeController {
             return ResponseEntity.internalServerError().build();
         }
     }
+    public String getUsernameFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(Keys.hmacShaKeyFor(Decoders.BASE64.decode(secretKey)))
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.getSubject();
+    }
+
 }

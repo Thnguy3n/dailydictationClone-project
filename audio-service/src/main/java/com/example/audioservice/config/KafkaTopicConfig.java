@@ -26,4 +26,13 @@ public class KafkaTopicConfig {
                 .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE)
                 .build();
     }
+    @Bean
+    public NewTopic challengeRequestsTopic() {
+        return TopicBuilder.name("check-user-answer")
+                .partitions(3)
+                .replicas(3)
+                .config(TopicConfig.RETENTION_MS_CONFIG, "86400000") // 1 day
+                .config(TopicConfig.CLEANUP_POLICY_CONFIG, TopicConfig.CLEANUP_POLICY_DELETE)
+                .build();
+    }
 }

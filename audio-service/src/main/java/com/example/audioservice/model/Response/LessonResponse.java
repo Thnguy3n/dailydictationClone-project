@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class LessonResponse {
+    private Long id;
     private String title;
     private Integer countChallenge;
 }

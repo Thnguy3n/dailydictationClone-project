@@ -30,8 +30,7 @@ public class ChallengeEntity {
     private Double endTime;
     @Column(name = "order_index")
     private Integer orderIndex;
-    @Column(name = "isPass")
-    private Integer isPass;
+
     @Column(name = "audio_segment")
     private String audioSegmentUrl;
     @ManyToOne

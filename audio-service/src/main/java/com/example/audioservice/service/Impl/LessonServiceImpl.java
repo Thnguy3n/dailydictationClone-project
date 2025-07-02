@@ -43,6 +43,7 @@ public class LessonServiceImpl implements LessonService {
         List<LessonResponse> lessonResponses = lessonEntities.stream()
                 .map(lessonEntity -> {
                     LessonResponse lessonResponse = new LessonResponse();
+                    lessonResponse.setId(lessonEntity.getId());
                     lessonResponse.setTitle(lessonEntity.getTitle());
                     if (lessonEntity.getChallengeEntities() != null) {
                         lessonResponse.setCountChallenge(lessonEntity.getChallengeEntities().size());

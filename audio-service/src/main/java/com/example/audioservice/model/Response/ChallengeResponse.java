@@ -9,5 +9,6 @@ public class ChallengeResponse {
     private String wordData;
     private Double startTime;
     private Double endTime;
+    private String audioSegmentUrl;
     private Integer isPass;
 }

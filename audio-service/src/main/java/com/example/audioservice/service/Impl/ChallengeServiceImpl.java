@@ -24,6 +24,7 @@ import org.modelmapper.ModelMapper;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
@@ -46,6 +47,7 @@ public class ChallengeServiceImpl implements ChallengeService {
     private final ChallengeJobRepository challengeJobRepository;
     private static final Pattern LINE_PATTERN = Pattern.compile("^(\\d+)\\.\\s*(.*)$");
     private final AudioProcessingService audioProcessingService;
+    private final KafkaTemplate<String, String> kafkaTemplate;
 
     @Override
     public ResponseEntity<String> addChallenge(String answerKey, Long lessonId) {
@@ -68,7 +70,6 @@ public class ChallengeServiceImpl implements ChallengeService {
                                 .lesson(lesson)
                                 .startTime(0.0) // cần được xử lý
                                 .endTime(0.0) // cần được xử lý
-                                .isPass(0)
                                 .build();
                     }
                     throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid challenge format: " + line);
@@ -99,7 +100,10 @@ public class ChallengeServiceImpl implements ChallengeService {
 
     @Override
     public ResponseEntity<List<ChallengeResponse>> findAllChallengesByLessonId(Long lessonId) {
-        List<ChallengeEntity> challengeEntities = challengeRepository.findByLesson_Id(lessonId);
+        List<ChallengeEntity> challengeEntities = challengeRepository.findByLesson_IdOrderByOrderIndex(lessonId);
+        if (challengeEntities.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No challenges found for the given lesson ID");
+        }
         List<ChallengeResponse> challengeResponses = challengeEntities.stream()
                 .map(challengeEntity ->modelMapper.map(challengeEntity,ChallengeResponse.class))
                 .collect(Collectors.toList());
@@ -107,7 +111,7 @@ public class ChallengeServiceImpl implements ChallengeService {
     }
 
     @Override
-    public ResponseEntity<Map<String, Object>> checkUserAnswer(Long challengeId, List<String> userAnswers) {
+    public ResponseEntity<Map<String, Object>> checkAnswer(Long challengeId, List<String> userAnswers) {
         ChallengeEntity challenge = challengeRepository.findById(challengeId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Challenge not found"));
         try {
@@ -118,13 +122,9 @@ public class ChallengeServiceImpl implements ChallengeService {
             Map<String, Object> result = TextSegmentationUtil.getDetailedResult(wordSegments, userAnswers);
             result.put("challengeId", challengeId);
             result.put("fullSentence", challenge.getFullSentence());
-            result.put("orderIndex", challenge.getOrderIndex());
 
             boolean allCorrect = (Boolean) result.get("allCorrect");
-            challenge.setIsPass(allCorrect ? 1 : -1);
-            challengeRepository.save(challenge);
-            result.put("isPass", challenge.getIsPass());
-
+            result.put("isPass", allCorrect ? 1 : -1);
             return new ResponseEntity<>(result, HttpStatus.OK);
         }
         catch (JsonProcessingException  e) {
@@ -132,40 +132,19 @@ public class ChallengeServiceImpl implements ChallengeService {
                     "Error processing challenge data");
         }
     }
-    @Override
-    public ResponseEntity<Map<String, Object>> getChallengeData(Long challengeId) {
-        ChallengeEntity challenge = challengeRepository.findById(challengeId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Challenge not found"));
-
+  @Override
+    public ResponseEntity<Map<String, Object>> checkUserAnswer(Long challengeId, List<String> userAnswers, String usernameFromToken) {
+        Map<String, Object> result = checkAnswer(challengeId, userAnswers).getBody();
+        result.put("username", usernameFromToken);
         try {
-            WordData wordData = objectMapper.readValue(challenge.getWordData(), WordData.class);
-
-            Map<String, Object> result = new HashMap<>();
-            result.put("challengeId", challengeId);
-            result.put("fullSentence", challenge.getFullSentence());
-            result.put("totalWords", wordData.getWords().size());
-            result.put("orderIndex", challenge.getOrderIndex());
-            result.put("isPass", challenge.getIsPass());
-
-            List<Map<String, Object>> wordPositions = wordData.getWords().stream()
-                    .map(wordInfo -> {
-                        Map<String, Object> position = new HashMap<>();
-                        position.put("index", wordInfo.getIndex());
-                        return position;
-                    })
-                    .collect(Collectors.toList());
-
-            result.put("wordPositions", wordPositions);
-
+            String jobId = UUID.randomUUID().toString();
+            String jsonMessage = objectMapper.writeValueAsString(result);
+            kafkaTemplate.send("check-user-answer", jobId, jsonMessage);
             return new ResponseEntity<>(result, HttpStatus.OK);
-
         } catch (JsonProcessingException e) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error processing challenge data");
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error serializing message", e);
         }
     }
-
-
 
     @KafkaListener(topics = "transcript-responses", groupId = "challenge-group" , containerFactory = "challengeKafkaListenerContainerFactory")
     public void handleTranscriptResponse(
@@ -220,6 +199,7 @@ public class ChallengeServiceImpl implements ChallengeService {
         }
 
     }
+
 
 
     private Map<String, SentenceWithTiming> findMatchingSequences(List<String> fullSentences, List<AssemblyWordInfoResponse> words) {
