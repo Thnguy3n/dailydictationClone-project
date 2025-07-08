@@ -1,5 +1,6 @@
 package com.example.userservice.controller;
 import com.example.userservice.model.request.ChangePasswordRequest;
+import com.example.userservice.model.request.UpdateProfileRequest;
 import com.example.userservice.model.request.UserRequest;
 import com.example.userservice.model.response.ChangePasswordResponse;
 import com.example.userservice.model.response.ProfileResponse;
@@ -37,7 +38,7 @@ public class UserController {
     @PostMapping("/update-profile")
     public ResponseEntity<ProfileResponse> updateProfile(
             HttpServletRequest request,
-            @Valid @RequestBody UserRequest userRequest) {
+            @Valid @RequestBody UpdateProfileRequest userRequest) {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();

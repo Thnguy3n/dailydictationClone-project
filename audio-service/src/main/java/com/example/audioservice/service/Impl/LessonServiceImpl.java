@@ -1,7 +1,9 @@
 package com.example.audioservice.service.Impl;
+import com.example.audioservice.entity.ChallengeEntity;
 import com.example.audioservice.entity.LessonEntity;
 import com.example.audioservice.entity.SectionEntity;
 import com.example.audioservice.model.Request.LessonRequest;
+import com.example.audioservice.model.Response.LessonInfo;
 import com.example.audioservice.model.Response.LessonResponse;
 import com.example.audioservice.repository.LessonRepository;
 import com.example.audioservice.repository.SectionRepository;
@@ -90,6 +92,43 @@ public class LessonServiceImpl implements LessonService {
                 encodedFileName
         );
         return ResponseEntity.ok(audioUrl);
+    }
+
+    @Override
+    public ResponseEntity<List<LessonInfo>> getAllLessonsWithChallenge() {
+        List<LessonEntity> lessonEntities = lessonRepository.findAll();
+        if (lessonEntities.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+        }
+        List<LessonInfo> lessonInfos = lessonEntities.stream()
+                .map(lessonEntity -> {
+                    LessonInfo lessonInfo = new LessonInfo();
+                    lessonInfo.setId(lessonEntity.getId());
+                    lessonInfo.setTitle(lessonEntity.getTitle());
+                    if (lessonEntity.getChallengeEntities() != null) {
+                        List<Long> challengeIds = lessonEntity.getChallengeEntities().stream()
+                                .map(ChallengeEntity::getId)
+                                .collect(Collectors.toList());
+                        lessonInfo.setChallengeIds(challengeIds);
+                    }
+                    return lessonInfo;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(lessonInfos);
+    }
+
+    @Override
+    public ResponseEntity<LessonInfo> getLessonInfo(Long lessonId) {
+        LessonEntity lessonEntity = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Lesson not found"));
+        List<Long> challengeIds = lessonEntity.getChallengeEntities().stream()
+                .map(ChallengeEntity::getId)
+                .collect(Collectors.toList());
+        LessonInfo lessonInfo = new LessonInfo();
+        lessonInfo.setId(lessonEntity.getId());
+        lessonInfo.setTitle(lessonEntity.getTitle());
+        lessonInfo.setChallengeIds(challengeIds);
+        return ResponseEntity.ok(lessonInfo);
     }
 
 

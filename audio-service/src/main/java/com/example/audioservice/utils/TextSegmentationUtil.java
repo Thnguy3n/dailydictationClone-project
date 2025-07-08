@@ -8,13 +8,13 @@ public class TextSegmentationUtil {
     private static final Map<String, List<String>> ALTERNATIVE_FORMS_MAP = new HashMap<>();
 
     static {
-        addAlternatives("1st", "first");
-        addAlternatives("2nd", "second");
-        addAlternatives("3rd", "third");
-        addAlternatives("4th", "fourth");
-        addAlternatives("5th", "fifth");
-        addAlternatives("26th", "twenty-sixth");
-        addAlternatives("31st", "thirty-first");
+        addAlternatives("1st", "1st.", "first", "first.");
+        addAlternatives("2nd", "2nd.", "second", "second.");
+        addAlternatives("3rd", "3rd.", "third", "third.");
+        addAlternatives("4th", "4th.", "fourth", "fourth.");
+        addAlternatives("5th", "5th.", "fifth", "fifth.");
+        addAlternatives("26th", "26th.", "twenty-sixth", "twenty-sixth.");
+        addAlternatives("31st", "31st.", "thirty-first", "thirty-first.");
 
         addAlternatives("can't", "cannot");
         addAlternatives("won't", "will not");

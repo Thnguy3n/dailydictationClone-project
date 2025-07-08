@@ -8,6 +8,7 @@ import com.example.audioservice.model.DTO.AudioSegment;
 import com.example.audioservice.model.DTO.SentenceWithTiming;
 import com.example.audioservice.model.DTO.WordData;
 import com.example.audioservice.model.DTO.WordInfo;
+import com.example.audioservice.model.Request.CheckRequest;
 import com.example.audioservice.model.Response.*;
 import com.example.audioservice.repository.ChallengeJobRepository;
 import com.example.audioservice.repository.ChallengeRepository;
@@ -111,16 +112,36 @@ public class ChallengeServiceImpl implements ChallengeService {
     }
 
     @Override
-    public ResponseEntity<Map<String, Object>> checkAnswer(Long challengeId, List<String> userAnswers) {
-        ChallengeEntity challenge = challengeRepository.findById(challengeId)
+    public ResponseEntity<List<ChallengeInfo>> findChallengesByLessonId(Long lessonId) {
+        List<ChallengeEntity> challengeEntities = challengeRepository.findAllByLesson_Id(lessonId);
+        if (challengeEntities.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No challenges found for the given lesson ID");
+        }
+        List<ChallengeInfo> challengeInfos = challengeEntities.stream()
+                .map(challengeEntity -> {
+                    ChallengeInfo challengeInfo = new ChallengeInfo();
+                    challengeInfo.setId(challengeEntity.getId());
+                    challengeInfo.setFullSentence(challengeEntity.getFullSentence());
+                    challengeInfo.setOrderIndex(challengeEntity.getOrderIndex());
+                    challengeInfo.setLessonId(challengeEntity.getLesson().getId());
+                    return challengeInfo;
+                })
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(challengeInfos);
+    }
+
+    @Override
+    public ResponseEntity<Map<String, Object>> checkAnswer(CheckRequest checkRequest) {
+        ChallengeEntity challenge = challengeRepository.findByOrderIndexAndLesson_Id(checkRequest.getOrderIndex(), checkRequest.getLessonId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Challenge not found"));
         try {
             WordData wordData = objectMapper.readValue(challenge.getWordData(), WordData.class);
             List<List<String>> wordSegments = wordData.getWords().stream()
                     .map(WordInfo::getAcceptableAnswers)
                     .collect(Collectors.toList());
-            Map<String, Object> result = TextSegmentationUtil.getDetailedResult(wordSegments, userAnswers);
-            result.put("challengeId", challengeId);
+            Map<String, Object> result = TextSegmentationUtil.getDetailedResult(wordSegments, checkRequest.getUserAnswers());
+            result.put("challengeId", challenge.getId());
+            result.put("lessonId", checkRequest.getLessonId());
             result.put("fullSentence", challenge.getFullSentence());
 
             boolean allCorrect = (Boolean) result.get("allCorrect");
@@ -133,8 +154,8 @@ public class ChallengeServiceImpl implements ChallengeService {
         }
     }
   @Override
-    public ResponseEntity<Map<String, Object>> checkUserAnswer(Long challengeId, List<String> userAnswers, String usernameFromToken) {
-        Map<String, Object> result = checkAnswer(challengeId, userAnswers).getBody();
+    public ResponseEntity<Map<String, Object>> checkUserAnswer(CheckRequest checkRequest, String usernameFromToken) {
+        Map<String, Object> result = checkAnswer(checkRequest).getBody();
         result.put("username", usernameFromToken);
         try {
             String jobId = UUID.randomUUID().toString();

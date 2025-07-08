@@ -1,6 +1,7 @@
 package com.example.userservice.service;
 
 import com.example.userservice.model.request.ChangePasswordRequest;
+import com.example.userservice.model.request.UpdateProfileRequest;
 import com.example.userservice.model.request.UserRequest;
 import com.example.userservice.model.response.AuthResponse;
 import com.example.userservice.model.response.ChangePasswordResponse;
@@ -12,7 +13,7 @@ public interface UserService {
 
     ResponseEntity<ProfileResponse> getProfile(String username);
 
-    ResponseEntity<ProfileResponse> updateProfile(UserRequest userRequest);
+    ResponseEntity<ProfileResponse> updateProfile(UpdateProfileRequest userRequest);
 
     ResponseEntity<ChangePasswordResponse> updatePassword(ChangePasswordRequest changePasswordRequest);
 }

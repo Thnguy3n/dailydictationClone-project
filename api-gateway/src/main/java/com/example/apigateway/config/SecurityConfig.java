@@ -1,8 +1,10 @@
 package com.example.apigateway.config;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.SecurityWebFiltersOrder;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
@@ -17,7 +19,11 @@ import java.util.Arrays;
 @Slf4j
 @Configuration
 @EnableWebFluxSecurity
+@RequiredArgsConstructor
 public class SecurityConfig {
+    private final OAuth2AuthenticationSuccessHandler oAuth2AuthenticationSuccessHandler;
+//    private final OAuth2AuthenticationFailureHandler oAuth2AuthenticationFailureHandler;
+    private final CustomOAuth2AuthorizationRequestResolver customOAuth2AuthorizationRequestResolver;
 
     private UrlBasedCorsConfigurationSource corsConfigurationSource(){
         CorsConfiguration configuration = new CorsConfiguration();
@@ -46,8 +52,12 @@ public class SecurityConfig {
                                 "/api/sections/list",
                                 "api/topics/list").permitAll()
                         .pathMatchers("api/category/add").hasAnyRole("ADMIN")
-
                         .anyExchange().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationRequestResolver(customOAuth2AuthorizationRequestResolver)
+                        .authenticationSuccessHandler(oAuth2AuthenticationSuccessHandler)
+//                        .authenticationFailureHandler(oAuth2AuthenticationFailureHandler)
                 )
                 .addFilterAt(jwtFilter, SecurityWebFiltersOrder.AUTHENTICATION)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))

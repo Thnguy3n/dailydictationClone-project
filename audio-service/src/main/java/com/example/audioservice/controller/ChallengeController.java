@@ -1,6 +1,8 @@
 package com.example.audioservice.controller;
 
+import com.example.audioservice.model.Request.CheckRequest;
 import com.example.audioservice.model.Response.AudioSegmentResponse;
+import com.example.audioservice.model.Response.ChallengeInfo;
 import com.example.audioservice.model.Response.ChallengeJobResponse;
 import com.example.audioservice.model.Response.ChallengeResponse;
 import com.example.audioservice.service.AudioProcessingService;
@@ -41,17 +43,16 @@ public class ChallengeController {
     public ResponseEntity<List<ChallengeResponse>> getAllChallenges(@RequestParam Long lessonId) {
         return challengeService.findAllChallengesByLessonId(lessonId);
     }
-    @PostMapping("/check/{challengeId}")
+    @PostMapping("/check")
     public ResponseEntity<Map<String, Object>> checkAnswer(
             HttpServletRequest request,
-            @PathVariable Long challengeId,
-            @RequestBody List<String> userAnswers) {
+            @RequestBody CheckRequest checkRequest) {
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
-            return challengeService.checkAnswer(challengeId, userAnswers);
+            return challengeService.checkAnswer(checkRequest);
         }
         String token = header.substring(7);
-        return challengeService.checkUserAnswer(challengeId, userAnswers, getUsernameFromToken(token));
+        return challengeService.checkUserAnswer(checkRequest, getUsernameFromToken(token));
     }
     @PostMapping("/segment-audio")
     public ResponseEntity<List<AudioSegmentResponse>> segmentAudioForChallenges(
@@ -61,6 +62,10 @@ public class ChallengeController {
         } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    @GetMapping("/lesson/{lessonId}/info")
+    public ResponseEntity<List<ChallengeInfo>> getChallengesByLessonId(@PathVariable Long lessonId) {
+        return challengeService.findChallengesByLessonId(lessonId);
     }
     public String getUsernameFromToken(String token) {
         Claims claims = Jwts.parser()

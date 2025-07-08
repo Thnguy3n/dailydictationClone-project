@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.springframework.cglib.core.Local;
 
 import java.time.LocalDateTime;
 
@@ -24,6 +25,18 @@ public class UserChallengeProgressEntity {
 
     @Column(name = "challenge_id")
     private Long challengeId;
+
+    @Column(name = "lesson_id")
+    private Long lessonId;
+
+    @Column(name = "total_attempts")
+    private Integer totalAttempts;
+
+    @Column(name = "first_attempt_at")
+    private LocalDateTime firstAttemptAt;
+
+    @Column(name = "last_attempt_at")
+    private LocalDateTime lastAttemptAt;
 
     @Column(name = "is_completed")
     private Integer isCompleted;
