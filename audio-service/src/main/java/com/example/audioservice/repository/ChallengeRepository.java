@@ -15,4 +15,6 @@ public interface ChallengeRepository extends JpaRepository<ChallengeEntity, Long
 
 
     Optional<ChallengeEntity> findByOrderIndexAndLesson_Id(Integer orderIndex, Long lessonId);
+
+    ChallengeEntity findByLesson_IdAndOrderIndex(Long lessonId, Integer orderIndex);
 }

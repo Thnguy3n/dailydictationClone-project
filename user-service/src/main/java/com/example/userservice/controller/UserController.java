@@ -1,9 +1,13 @@
 package com.example.userservice.controller;
+import com.example.userservice.entity.UserEntity;
 import com.example.userservice.model.request.ChangePasswordRequest;
 import com.example.userservice.model.request.UpdateProfileRequest;
 import com.example.userservice.model.request.UserRequest;
 import com.example.userservice.model.response.ChangePasswordResponse;
+import com.example.userservice.model.response.PasswordStatusResponse;
 import com.example.userservice.model.response.ProfileResponse;
+import com.example.userservice.model.response.UserInfoResponse;
+import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.UserService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -22,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final UserRepository userRepository;
     @Value("${jwt-secret}")
     private String secretKey;
 
@@ -59,6 +64,32 @@ public class UserController {
         String token = header.substring(7);
         changePasswordRequest.setUsername(getUsernameFromToken(token));
         return userService.updatePassword(changePasswordRequest);
+    }
+    @GetMapping("/password-status")
+    public ResponseEntity<PasswordStatusResponse> getPasswordStatus(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || !header.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String token = header.substring(7);
+        String username = getUsernameFromToken(token);
+
+        UserEntity user =userRepository.findByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+
+        boolean hasPassword = user.getPassword() != null;
+        return ResponseEntity.ok(new PasswordStatusResponse(hasPassword));
+    }
+    @GetMapping("/info/{username}")
+    public ResponseEntity<UserInfoResponse> getUserInfo(@PathVariable String username) {
+        UserEntity user = userRepository.findByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        UserInfoResponse userInfoResponse =UserInfoResponse.builder().userId(user.getId()).build();
+        return ResponseEntity.ok(userInfoResponse);
     }
     public String getUsernameFromToken(String token) {
         Claims claims = Jwts.parser()

@@ -1,0 +1,51 @@
+CREATE TABLE premium_package (
+  id                BIGINT        PRIMARY KEY AUTO_INCREMENT,
+  name              VARCHAR(100)  NOT NULL,
+  price             DECIMAL(12,2) NOT NULL,
+  discount          INT           DEFAULT 0,
+  discount_start    DATE,
+  discount_end      DATE,
+  discount_status   VARCHAR(20)   DEFAULT 'OFF',
+  description       VARCHAR(255),
+  created_at        DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME      NOT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE premium_purchase (
+  id                 BIGINT         PRIMARY KEY AUTO_INCREMENT,
+  user_id            BIGINT         NOT NULL,
+  package_id         BIGINT         NOT NULL,
+  price              DECIMAL(12,2)  NOT NULL,
+  status             VARCHAR(20)    NOT NULL,   -- PENDING, ACTIVE, EXPIRED, CANCELLED
+  start_date         DATE           NOT NULL,
+  end_date           DATE           NOT NULL,
+  created_at         DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at         DATETIME       NOT NULL ON UPDATE CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (package_id) REFERENCES premium_package(id)
+);
+
+CREATE TABLE qr_transaction (
+  id               BIGINT        PRIMARY KEY AUTO_INCREMENT,
+  purchase_id      BIGINT        NOT NULL,
+  bank_info_id     BIGINT        NOT NULL,
+  add_info         VARCHAR(255)  DEFAULT NULL,
+  qr_data_url      TEXT      NOT NULL,
+  expires_at       DATETIME      NOT NULL,
+  created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+  FOREIGN KEY (purchase_id) REFERENCES premium_purchase(id)
+  FOREIGN KEY (bank_info_id) REFERENCES bank_info(id)
+);
+
+CREATE TABLE bank_info (
+  id               BIGINT        PRIMARY KEY AUTO_INCREMENT,
+  account_name     VARCHAR(50)   NOT NULL,
+  account_number   VARCHAR(100)  NOT NULL,
+  bank_code        VARCHAR(100)  NOT NULL,
+  template         VARCHAR(255)  DEFAULT NULL,
+  format           VARCHAR(50)   DEFAULT NULL,
+  created_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at       DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+);

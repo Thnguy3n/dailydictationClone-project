@@ -7,27 +7,78 @@ class ChallengeService {
 
   ChallengeService(this._dio);
 
-  Future<List<Challenge>> getChallenges(int lessonId) async {
+  Future<Challenge> getCurrentChallenge(int lessonId) async {
     try {
+      String? token = await AuthService.getToken();
+
+      Map<String, dynamic> headers = {
+        'Content-Type': 'application/json',
+      };
+
+      if (token != null && token.trim().isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
       final response = await _dio.get(
-        '/challenge/list',
+        '/challenge/continue-to-challenge',
         queryParameters: {'lessonId': lessonId},
+        options: Options(headers: headers),
       );
 
-      if (response.data is List) {
-        return (response.data as List)
-            .map((item) => Challenge.fromJson(item))
-            .toList();
+      if (response.data != null) {
+        return Challenge.fromJson(response.data);
       } else {
         throw Exception('Invalid response format');
       }
     } on DioException catch (e) {
-      throw Exception('Failed to load challenges: ${e.response?.data['message'] ?? e.message}');
+      throw Exception('Failed to load challenge: ${e.response?.data['message'] ?? e.message}');
     } catch (e) {
-      throw Exception('Failed to load challenges: $e');
+      throw Exception('Failed to load challenge: $e');
     }
   }
 
+  Future<Challenge> getNextChallenge(int lessonId, int currentOrderIndex) async {
+    try {
+      final response = await _dio.get(
+        '/challenge/next-challenge',
+        queryParameters: {
+          'lessonId': lessonId,
+          'orderIndex': currentOrderIndex,
+        },
+      );
+      if (response.data != null) {
+        return Challenge.fromJson(response.data);
+      } else {
+        throw Exception('No next challenge available');
+      }
+    } on DioException catch (e) {
+      throw Exception('Failed to load next challenge: ${e.response?.data['message'] ?? e.message}');
+    } catch (e) {
+      throw Exception('Failed to load next challenge: $e');
+    }
+  }
+
+  Future<Challenge> getPreviousChallenge(int lessonId, int currentOrderIndex) async {
+    try {
+      final response = await _dio.get(
+        '/challenge/previous-challenge',
+        queryParameters: {
+          'lessonId': lessonId,
+          'orderIndex': currentOrderIndex,
+        },
+      );
+
+      if (response.data != null) {
+        return Challenge.fromJson(response.data);
+      } else {
+        throw Exception('No previous challenge available');
+      }
+    } on DioException catch (e) {
+      throw Exception('Failed to load previous challenge: ${e.response?.data['message'] ?? e.message}');
+    } catch (e) {
+      throw Exception('Failed to load previous challenge: $e');
+    }
+  }
   Future<Map<String, dynamic>> checkChallenge(int orderIndex, int lessonId, List<String> userAnswers) async {
     try {
       String? token = await AuthService.getToken();

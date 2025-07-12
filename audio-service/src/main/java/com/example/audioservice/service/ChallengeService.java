@@ -19,4 +19,10 @@ public interface ChallengeService {
     ResponseEntity<List<ChallengeJobResponse>> processChallenge(String challengeJobId, Long lessonId);
 
     ResponseEntity<Map<String, Object>> checkUserAnswer(CheckRequest checkRequest, String usernameFromToken);
+    ResponseEntity<ChallengeResponse> getFirstChallenge(Long lessonId);
+    ResponseEntity<ChallengeResponse> continueChallenges(Long lessonId, String username);
+
+    ResponseEntity<ChallengeResponse> getNextChallenge(Long lessonId, Integer orderIndex);
+
+    ResponseEntity<ChallengeResponse> getPreviousChallenge(Long lessonId, Integer orderIndex);
 }

@@ -16,6 +16,29 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
   bool _isLoading = false;
   bool _obscureOldPassword = true;
   bool _obscureNewPassword = true;
+  bool _hasPassword = true; // Default true, sẽ được update từ API
+  bool _isCheckingPassword = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPasswordStatus();
+  }
+
+  Future<void> _checkPasswordStatus() async {
+    setState(() {
+      _isCheckingPassword = true;
+    });
+
+    final result = await UserService.getPasswordStatus();
+
+    setState(() {
+      _isCheckingPassword = false;
+      if (result.success) {
+        _hasPassword = result.data ?? true;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -32,7 +55,7 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
     });
 
     final result = await UserService.updatePassword(
-      oldPassword: _oldPasswordController.text,
+      oldPassword: _hasPassword ? _oldPasswordController.text : '',
       newPassword: _newPasswordController.text,
     );
 
@@ -43,8 +66,8 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
     if (result.success) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Password updated successfully!'),
+          SnackBar(
+            content: Text(_hasPassword ? 'Password updated successfully!' : 'Password created successfully!'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -113,7 +136,13 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
 
               // Content
               Expanded(
-                child: SingleChildScrollView(
+                child: _isCheckingPassword
+                    ? const Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7FB3D3)),
+                  ),
+                )
+                    : SingleChildScrollView(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Form(
                     key: _formKey,
@@ -121,9 +150,9 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         // Title
-                        const Text(
-                          'Update password',
-                          style: TextStyle(
+                        Text(
+                          _hasPassword ? 'Update password' : 'Create password',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 32,
                             fontWeight: FontWeight.bold,
@@ -133,9 +162,11 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                         const SizedBox(height: 16),
 
                         // Subtitle
-                        const Text(
-                          'Input info below to update your password.',
-                          style: TextStyle(
+                        Text(
+                          _hasPassword
+                              ? 'Input info below to update your password.'
+                              : 'Create a password for your account.',
+                          style: const TextStyle(
                             color: Color(0xFFBDC3C7),
                             fontSize: 16,
                             height: 1.5,
@@ -144,58 +175,58 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
 
                         const SizedBox(height: 40),
 
-                        // Old Password Field
-                        TextFormField(
-                          controller: _oldPasswordController,
-                          obscureText: _obscureOldPassword,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Old Password',
-                            hintStyle: TextStyle(
-                              color: Colors.white.withOpacity(0.6),
-                              fontSize: 16,
-                            ),
-                            filled: true,
-                            fillColor: const Color(0xFF34495E),
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 16,
-                            ),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _obscureOldPassword
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
+                        // Old Password Field (chỉ hiển thị nếu user đã có password)
+                        if (_hasPassword) ...[
+                          TextFormField(
+                            controller: _oldPasswordController,
+                            obscureText: _obscureOldPassword,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              hintText: 'Old Password',
+                              hintStyle: TextStyle(
                                 color: Colors.white.withOpacity(0.6),
+                                fontSize: 16,
                               ),
-                              onPressed: () {
-                                setState(() {
-                                  _obscureOldPassword = !_obscureOldPassword;
-                                });
-                              },
+                              filled: true,
+                              fillColor: const Color(0xFF34495E),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide.none,
+                              ),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 16,
+                              ),
+                              suffixIcon: IconButton(
+                                icon: Icon(
+                                  _obscureOldPassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                  color: Colors.white.withOpacity(0.6),
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _obscureOldPassword = !_obscureOldPassword;
+                                  });
+                                },
+                              ),
                             ),
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Please enter your current password';
+                              }
+                              return null;
+                            },
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please enter your current password';
-                            }
-                            return null;
-                          },
-                        ),
+                          const SizedBox(height: 20),
+                        ],
 
-                        const SizedBox(height: 20),
-
-                        // New Password Field
                         TextFormField(
                           controller: _newPasswordController,
                           obscureText: _obscureNewPassword,
                           style: const TextStyle(color: Colors.white),
                           decoration: InputDecoration(
-                            hintText: 'New Password',
+                            hintText: _hasPassword ? 'New Password' : 'Password',
                             hintStyle: TextStyle(
                               color: Colors.white.withOpacity(0.6),
                               fontSize: 16,
@@ -226,12 +257,17 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Please enter a new password';
+                              return _hasPassword
+                                  ? 'Please enter a new password'
+                                  : 'Please enter a password';
                             }
-                            if (value.length < 6) {
-                              return 'Password must be at least 6 characters';
+                            if (value.length < 8) {
+                              return 'Password must be at least 8 characters';
                             }
-                            if (value == _oldPasswordController.text) {
+                            if (!RegExp(r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[!@#$%^&*]).*$').hasMatch(value)) {
+                              return 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.';
+                            }
+                            if (_hasPassword && value == _oldPasswordController.text) {
                               return 'New password must be different from old password';
                             }
                             return null;
@@ -240,7 +276,6 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
 
                         const SizedBox(height: 60),
 
-                        // Save Changes Button
                         SizedBox(
                           width: double.infinity,
                           height: 56,
@@ -265,9 +300,9 @@ class _UpdatePasswordScreenState extends State<UpdatePasswordScreen> {
                                 ),
                               ),
                             )
-                                : const Text(
-                              'Save Changes',
-                              style: TextStyle(
+                                : Text(
+                              _hasPassword ? 'Save Changes' : 'Create Password',
+                              style: const TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w600,
                               ),

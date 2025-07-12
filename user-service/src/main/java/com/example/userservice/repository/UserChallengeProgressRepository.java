@@ -23,5 +23,7 @@ public interface UserChallengeProgressRepository extends JpaRepository<UserChall
     Optional<UserChallengeProgressEntity> findFirstByUserIdAndChallengeIdInAndIsCompletedOrderByCompletedAtDesc(String userId, Collection<Long> challengeIds, Integer isCompleted);
 
     Optional<UserChallengeProgressEntity> findFirstByUserIdAndChallengeIdInOrderByLastAttemptAtDesc(String userId, Collection<Long> challengeIds);
+
+    UserChallengeProgressEntity findFirstByUserIdAndLessonIdAndIsCompletedOrderByCompletedAtDesc(String userId, Long lessonId, Integer isCompleted);
 }
 

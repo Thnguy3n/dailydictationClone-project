@@ -135,7 +135,7 @@ class UserService {
         );
       }
 
-      final response = await http.put(
+      final response = await http.post(
         Uri.parse('$userServiceUrl/users/update-password'),
         headers: {
           'Content-Type': 'application/json',
@@ -169,6 +169,54 @@ class UserService {
         return UserResult(
           success: false,
           message: 'Failed to update password',
+          errorCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return UserResult(
+        success: false,
+        message: 'Network error. Please check your connection.',
+        errorCode: 0,
+      );
+    }
+  }
+
+  static Future<UserResult> getPasswordStatus() async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null) {
+        return UserResult(
+          success: false,
+          message: 'No authentication token found',
+        );
+      }
+
+      final response = await http.get(
+        Uri.parse('$userServiceUrl/users/password-status'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return UserResult(
+          success: true,
+          data: data['hasPassword'],
+          message: 'Password status retrieved successfully',
+        );
+      } else if (response.statusCode == 401) {
+        await AuthService.removeToken();
+        return UserResult(
+          success: false,
+          message: 'Session expired. Please sign in again.',
+          errorCode: 401,
+        );
+      } else {
+        return UserResult(
+          success: false,
+          message: 'Failed to get password status',
           errorCode: response.statusCode,
         );
       }
@@ -425,13 +473,13 @@ class ProfileResult {
 class UserResult {
   final bool success;
   final String message;
-  final Map<String, dynamic>? data;
   final int? errorCode;
+  final dynamic data; // Thêm field này để lưu data
 
   UserResult({
     required this.success,
     required this.message,
-    this.data,
     this.errorCode,
+    this.data,
   });
 }

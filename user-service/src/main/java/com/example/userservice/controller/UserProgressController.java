@@ -1,5 +1,7 @@
 package com.example.userservice.controller;
 
+import com.example.userservice.model.response.ProgressResponse;
+import com.example.userservice.model.response.UserChallengeDetailResponse;
 import com.example.userservice.model.response.UserLessonProgressDetailResponse;
 import com.example.userservice.model.response.UserLessonProgressResponse;
 import com.example.userservice.service.UserChallengeProgressService;
@@ -12,10 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -47,6 +46,11 @@ public class UserProgressController {
         }
         String token = header.substring(7);
         return userProgressService.getUserLessonProgressDetail(getUsernameFromToken(token), lessonId);
+    }
+    @GetMapping("/last-completed-challenge/{lessonId}")
+    public ResponseEntity<ProgressResponse> getUserChallengeDetail(@RequestParam String username,
+                                                                   @PathVariable Long lessonId) {
+        return userProgressService.getLatestCompleteChallengeDetail(username,lessonId);
     }
     public String getUsernameFromToken(String token) {
         Claims claims = Jwts.parser()

@@ -2,6 +2,7 @@ import 'package:dailydictationclone_flutter/screen/onboarding_screen.dart';
 import 'package:dailydictationclone_flutter/screen/profile_screen.dart';
 import 'package:dailydictationclone_flutter/screen/sign_up_screen.dart';
 import 'package:dailydictationclone_flutter/screen/topic_list.dart';
+import 'package:dailydictationclone_flutter/screen/upgrade_premium_screen.dart';
 import 'package:dailydictationclone_flutter/service/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -32,6 +33,7 @@ class MyApp extends StatelessWidget {
         '/signIn': (context) => const SignInScreen(),
         '/signUp': (context) => const SignUpScreen(),
         '/profile': (context) => const ProfileScreen(),
+        '/upgradePremium': (context) => const UpgradePremiumScreen(),
       },
     );
   }

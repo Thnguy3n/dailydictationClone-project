@@ -153,13 +153,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 icon: Icons.workspace_premium,
                 title: 'Upgrade PRO - Remove Ads',
                 subtitle: '🔥',
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Upgrade feature coming soon!'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
+                onTap: () async {
+                  Navigator.pushNamed(context, '/upgradePremium');
                 },
               ),
 

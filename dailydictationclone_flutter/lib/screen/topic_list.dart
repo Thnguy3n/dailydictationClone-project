@@ -74,7 +74,8 @@ class _TopicListPageState extends State<TopicListPage> {
           ),
         ),
       ),
-      body: Padding(
+      body:
+      Padding(
         padding: const EdgeInsets.all(16.0),
         child: Container(
           decoration: BoxDecoration(

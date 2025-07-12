@@ -170,6 +170,24 @@ public class UserChallengeProgressServiceImpl implements UserChallengeProgressSe
         }
     }
 
+    @Override
+    public ResponseEntity<ProgressResponse> getLatestCompleteChallengeDetail(String username, Long lessonId) {
+        UserEntity user = userRepository.findByUsername(username);
+        if (user == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found");
+        }
+        UserChallengeProgressEntity userChallengeProgressEntity = userChallengeProgressRepository.findFirstByUserIdAndLessonIdAndIsCompletedOrderByCompletedAtDesc(user.getId(),lessonId, 1);
+        if (userChallengeProgressEntity == null) {
+            return ResponseEntity.ok(null);
+        }
+       ProgressResponse progressResponse = ProgressResponse.builder()
+                .lessonId(lessonId)
+                .challengeId(userChallengeProgressEntity.getChallengeId())
+                .build();
+
+        return ResponseEntity.ok(progressResponse);
+    }
+
     private UserChallengeDetailResponse calculateChallengeDetail(String userId, ChallengeInfo challengeInfo) {
         UserChallengeProgressEntity progress = userChallengeProgressRepository
                 .findByChallengeIdAndUserId(challengeInfo.getId(), userId);

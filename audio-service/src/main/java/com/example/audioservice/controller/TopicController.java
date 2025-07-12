@@ -24,5 +24,4 @@ public class TopicController {
     public ResponseEntity<TopicResponse> addTopic(@RequestBody TopicRequest topicRequest) {
         return topicService.addTopic(topicRequest);
     }
-
 }

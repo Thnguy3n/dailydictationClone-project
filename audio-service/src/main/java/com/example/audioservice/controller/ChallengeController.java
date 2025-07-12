@@ -14,6 +14,7 @@ import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,9 +24,8 @@ import java.util.Map;
 @RestController(value = "addChallengeOfAdmin")
 @RequestMapping("/api/challenge")
 @RequiredArgsConstructor
-public class ChallengeController {
+public class    ChallengeController {
     private final ChallengeService challengeService;
-    private final AudioProcessingService audioProcessingService;
     @Value("${jwt-secret}")
     private String secretKey;
 
@@ -42,6 +42,28 @@ public class ChallengeController {
     @GetMapping("/list")
     public ResponseEntity<List<ChallengeResponse>> getAllChallenges(@RequestParam Long lessonId) {
         return challengeService.findAllChallengesByLessonId(lessonId);
+    }
+
+    @GetMapping("/continue-to-challenge")
+    public ResponseEntity<ChallengeResponse> getChallenge(@RequestParam Long lessonId,
+                                                          HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || header.trim().isEmpty() || !header.startsWith("Bearer ")) {
+            return challengeService.getFirstChallenge(lessonId);
+        }
+        String token = header.substring(7);
+        String username = getUsernameFromToken(token);
+        return challengeService.continueChallenges(lessonId, username);
+    }
+    @GetMapping("/next-challenge")
+    public ResponseEntity<ChallengeResponse> getNextChallenge(@RequestParam Long lessonId,
+                                                              @RequestParam Integer orderIndex) {
+        return challengeService.getNextChallenge(lessonId, orderIndex);
+    }
+    @GetMapping("/previous-challenge")
+    public ResponseEntity<ChallengeResponse> getPreviousChallenge(@RequestParam Long lessonId,
+                                                                  @RequestParam Integer orderIndex) {
+        return challengeService.getPreviousChallenge(lessonId, orderIndex);
     }
     @PostMapping("/check")
     public ResponseEntity<Map<String, Object>> checkAnswer(

@@ -25,6 +25,13 @@ class ChallengeScreen extends StatefulWidget {
 }
 
 class _ChallengeScreenState extends State<ChallengeScreen> {
+
+  Challenge? _currentChallenge;
+  bool _isLoading = true;
+  bool _isLoadingNext = false;
+  bool _isLoadingPrevious = false;
+  String? _errorMessage;
+
   Map<String, dynamic>? _lastCheckResult;
   String? _hintSentence;
   bool _showResult = false;
@@ -32,10 +39,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   late final AudioPlayer _audioPlayer = AudioPlayer();
   double _playbackSpeed = 1.0;
   final List<double> _speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0];
-  List<Challenge> _challenges = [];
-  int _currentChallengeIndex = 0;
-  bool _isLoading = true;
-  String? _errorMessage;
 
   // Audio player state
   bool _isPlaying = false;
@@ -77,7 +80,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadChallenges();
+    _loadCurrentChallenge();
     _setupAudioPlayer();
   }
 
@@ -126,17 +129,20 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     );
   }
 
-  Future<void> _loadChallenges() async {
+  Future<void> _loadCurrentChallenge() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      final challenges = await _challengeService.getChallenges(widget.lessonId);
+      final challenge = await _challengeService.getCurrentChallenge(widget.lessonId);
       setState(() {
-        _challenges = challenges;
+        _currentChallenge = challenge;
         _isLoading = false;
       });
 
-      if (challenges.isNotEmpty) {
-        await _loadCurrentChallenge();
-      }
+      await _loadAudioForChallenge();
     } catch (e) {
       setState(() {
         _errorMessage = e.toString();
@@ -145,20 +151,20 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     }
   }
 
-  Future<void> _loadCurrentChallenge() async {
-    if (_challenges.isEmpty) return;
+  Future<void> _loadAudioForChallenge() async {
+    if (_currentChallenge == null) return;
+
     setState(() {
       _showResult = false;
       _lastCheckResult = null;
       _hintSentence = null;
     });
-    final currentChallenge = _challenges[_currentChallengeIndex];
+
     try {
-      print('Loading audio from URL: ${currentChallenge.audioSegmentUrl}');
+      print('Loading audio from URL: ${_currentChallenge!.audioSegmentUrl}');
 
       await _audioPlayer.stop();
-      await _audioPlayer.setSourceUrl(currentChallenge.audioSegmentUrl);
-
+      await _audioPlayer.setSourceUrl(_currentChallenge!.audioSegmentUrl);
       await _audioPlayer.setPlaybackRate(_playbackSpeed);
 
       setState(() {
@@ -168,6 +174,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
 
       _answerController.clear();
       _checkResult = null;
+      _translatedAnswer = null;
 
     } catch (e) {
       print('Error loading audio: $e');
@@ -204,10 +211,8 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   }
   Future<void> _replayFromStart() async {
     try {
-      final currentChallenge = _challenges[_currentChallengeIndex];
-
       await _audioPlayer.stop();
-      await _audioPlayer.setSourceUrl(currentChallenge.audioSegmentUrl);
+      await _audioPlayer.setSourceUrl(_currentChallenge!.audioSegmentUrl);
 
       await _audioPlayer.setPlaybackRate(_playbackSpeed);
 
@@ -336,17 +341,18 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       return;
     }
 
+    if (_currentChallenge == null) return;
+
     setState(() {
       _isCheckingAnswer = true;
       _showResult = false;
     });
 
     try {
-      final currentChallenge = _challenges[_currentChallengeIndex];
       final userAnswer = _parseUserInput(_answerController.text);
 
       final result = await _challengeService.checkChallenge(
-        _currentChallengeIndex + 1,
+        _currentChallenge!.orderIndex,
         widget.lessonId,
         userAnswer,
       );
@@ -374,16 +380,34 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       );
     }
   }
-  void _previousChallenge() {
-    if (_currentChallengeIndex > 0) {
+
+  Future<void> _previousChallenge() async {
+    if (_currentChallenge == null) return;
+
+    setState(() {
+      _isLoadingPrevious = true;
+    });
+
+    try {
+      final previousChallenge = await _challengeService.getPreviousChallenge(
+        widget.lessonId,
+        _currentChallenge!.orderIndex,
+      );
+
       setState(() {
-        _currentChallengeIndex--;
+        _currentChallenge = previousChallenge;
+        _isLoadingPrevious = false;
       });
-      _loadCurrentChallenge();
-    } else {
+
+      await _loadAudioForChallenge();
+    } catch (e) {
+      setState(() {
+        _isLoadingPrevious = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Previous challenge'),
+        SnackBar(
+          content: Text('No previous challenge available'),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 2),
         ),
@@ -391,16 +415,33 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     }
   }
 
-  void _nextChallengeManual() {
-    if (_currentChallengeIndex < _challenges.length - 1) {
+  Future<void> _nextChallengeManual() async {
+    if (_currentChallenge == null) return;
+
+    setState(() {
+      _isLoadingNext = true;
+    });
+
+    try {
+      final nextChallenge = await _challengeService.getNextChallenge(
+        widget.lessonId,
+        _currentChallenge!.orderIndex,
+      );
+
       setState(() {
-        _currentChallengeIndex++;
+        _currentChallenge = nextChallenge;
+        _isLoadingNext = false;
       });
-      _loadCurrentChallenge();
-    } else {
+
+      await _loadAudioForChallenge();
+    } catch (e) {
+      setState(() {
+        _isLoadingNext = false;
+      });
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('next challenge'),
+        SnackBar(
+          content: Text('No next challenge available'),
           backgroundColor: Colors.orange,
           duration: Duration(seconds: 2),
         ),
@@ -408,17 +449,35 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
     }
   }
 
-  void _nextChallenge() {
-    if (_currentChallengeIndex < _challenges.length - 1) {
+  Future<void> _nextChallenge() async {
+    if (_currentChallenge == null) return;
+
+    setState(() {
+      _isLoadingNext = true;
+    });
+
+    try {
+      final nextChallenge = await _challengeService.getNextChallenge(
+        widget.lessonId,
+        _currentChallenge!.orderIndex,
+      );
+
       setState(() {
-        _currentChallengeIndex++;
+        _currentChallenge = nextChallenge;
+        _isLoadingNext = false;
       });
-      _loadCurrentChallenge();
-    } else {
+
+      await _loadAudioForChallenge();
+    } catch (e) {
+      setState(() {
+        _isLoadingNext = false;
+      });
+
       // Lesson completed
       _showCompletionDialog();
     }
   }
+
   void _handleResultAction() {
     if (_lastCheckResult?['isCorrect'] == true) {
       _nextChallenge();
@@ -527,7 +586,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       return _buildErrorState();
     }
 
-    if (_challenges.isEmpty) {
+    if (_currentChallenge == null) {
       return _buildEmptyState();
     }
 
@@ -554,6 +613,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       ],
     );
   }
+
   Widget _buildResultDisplay() {
     final isCorrect = _lastCheckResult?['allCorrect'] ?? false;
     final hasMistake = !isCorrect;
@@ -737,13 +797,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
           ),
           const SizedBox(height: 16),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                _isLoading = true;
-                _errorMessage = null;
-              });
-              _loadChallenges();
-            },
+            onPressed: _loadCurrentChallenge,
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF7FB3D3),
               foregroundColor: const Color(0xFF2C3E50),
@@ -758,7 +812,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
   Widget _buildEmptyState() {
     return const Center(
       child: Text(
-        'No challenges found for this lesson',
+        'No challenge found for this lesson',
         style: TextStyle(color: Colors.white, fontSize: 16),
       ),
     );
@@ -806,7 +860,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
-          'Challenge ${_currentChallengeIndex + 1}:',
+          'Challenge ${_currentChallenge?.orderIndex ?? 0}:',
           style: const TextStyle(
             color: Color(0xFFD1D1D1),
             fontSize: 20,
@@ -850,6 +904,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       ],
     );
   }
+
   Widget _buildAudioPlayer() {
     return Column(
       children: [
@@ -898,18 +953,31 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
           ),
         ),
 
-        // Audio Controls with Challenge Navigation
+        // Audio Controls với loading state
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Previous Challenge Button
-            IconButton(
-              onPressed: _currentChallengeIndex > 0 ? _previousChallenge : null,
-              icon: Icon(
+            _isLoadingPrevious
+                ? const SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            )
+                : IconButton(
+              onPressed: _previousChallenge,
+              icon: const Icon(
                 Icons.skip_previous,
-                color: _currentChallengeIndex > 0
-                    ? Colors.white
-                    : Colors.white.withOpacity(0.3),
+                color: Colors.white,
                 size: 32,
               ),
             ),
@@ -938,15 +1006,26 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
             const SizedBox(width: 20),
 
             // Next Challenge Button
-            IconButton(
-              onPressed: _currentChallengeIndex < _challenges.length - 1
-                  ? _nextChallengeManual
-                  : null,
-              icon: Icon(
+            _isLoadingNext
+                ? const SizedBox(
+              width: 48,
+              height: 48,
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            )
+                : IconButton(
+              onPressed: _nextChallengeManual,
+              icon: const Icon(
                 Icons.skip_next,
-                color: _currentChallengeIndex < _challenges.length - 1
-                    ? Colors.white
-                    : Colors.white.withOpacity(0.3),
+                color: Colors.white,
                 size: 32,
               ),
             ),
@@ -960,7 +1039,7 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
         Column(
           children: [
             Text(
-              'Challenge ${_currentChallengeIndex + 1} of ${_challenges.length}',
+              'Challenge ${_currentChallenge?.orderIndex ?? 0}',
               style: TextStyle(
                 color: Colors.white.withOpacity(0.7),
                 fontSize: 12,
@@ -980,7 +1059,6 @@ class _ChallengeScreenState extends State<ChallengeScreen> {
       ],
     );
   }
-
   Widget _buildAnswerInput() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20),

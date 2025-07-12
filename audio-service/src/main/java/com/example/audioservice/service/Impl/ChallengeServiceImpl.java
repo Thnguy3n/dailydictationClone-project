@@ -20,8 +20,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.common.errors.ResourceNotFoundException;
+import org.checkerframework.checker.units.qual.C;
 import org.hibernate.annotations.ColumnTransformer;
 import org.modelmapper.ModelMapper;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -29,6 +32,8 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestOperations;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
@@ -49,7 +54,7 @@ public class ChallengeServiceImpl implements ChallengeService {
     private static final Pattern LINE_PATTERN = Pattern.compile("^(\\d+)\\.\\s*(.*)$");
     private final AudioProcessingService audioProcessingService;
     private final KafkaTemplate<String, String> kafkaTemplate;
-
+    private final RestTemplate restTemplate;
     @Override
     public ResponseEntity<String> addChallenge(String answerKey, Long lessonId) {
         LessonEntity lesson = lessonRepository.findById(lessonId)
@@ -164,6 +169,63 @@ public class ChallengeServiceImpl implements ChallengeService {
             return new ResponseEntity<>(result, HttpStatus.OK);
         } catch (JsonProcessingException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error serializing message", e);
+        }
+    }
+
+    @Override
+    public ResponseEntity<ChallengeResponse> getFirstChallenge(Long lessonId) {
+        ChallengeEntity challengeEntity = challengeRepository.findByLesson_IdAndOrderIndex(lessonId, 1);
+        if (challengeEntity == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Challenge not found");
+        }
+        ChallengeResponse challengeResponse = modelMapper.map(challengeEntity, ChallengeResponse.class);
+        return ResponseEntity.ok(challengeResponse);
+    }
+
+    @Override
+    public ResponseEntity<ChallengeResponse> continueChallenges(Long lessonId, String username) {
+        ProgressResponse progressResponse = getLatestCompleteChallengeDetail(username, lessonId);
+        if (progressResponse == null || progressResponse.getChallengeId() == null) {
+            return getFirstChallenge(lessonId);
+        }
+        ChallengeEntity challengeEntity = challengeRepository.findById(progressResponse.getChallengeId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Challenge not found"));
+        ChallengeResponse challengeResponse = modelMapper.map(challengeEntity, ChallengeResponse.class);
+        return ResponseEntity.ok(challengeResponse);
+    }
+
+    @Override
+    public ResponseEntity<ChallengeResponse> getNextChallenge(Long lessonId, Integer orderIndex) {
+        ChallengeEntity challengeEntity = challengeRepository.findByLesson_IdAndOrderIndex(lessonId, orderIndex + 1);
+        if (challengeEntity == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Next challenge not found");
+        }
+        ChallengeResponse challengeResponse = modelMapper.map(challengeEntity, ChallengeResponse.class);
+        return ResponseEntity.ok(challengeResponse);
+    }
+
+    @Override
+    public ResponseEntity<ChallengeResponse> getPreviousChallenge(Long lessonId, Integer orderIndex) {
+        ChallengeEntity challengeEntity = challengeRepository.findByLesson_IdAndOrderIndex(lessonId, orderIndex - 1);
+        if (challengeEntity == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Previous challenge not found");
+        }
+        ChallengeResponse challengeResponse = modelMapper.map(challengeEntity, ChallengeResponse.class);
+        return ResponseEntity.ok(challengeResponse);
+    }
+
+    private ProgressResponse getLatestCompleteChallengeDetail(String username, Long lessonId) {
+        try{
+            String url = "http://user-service/api/user-progress/last-completed-challenge/" + lessonId + "?username=" + username;
+            ResponseEntity<ProgressResponse> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<ProgressResponse>() {}
+                    );
+            return response.getBody();
+        }catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error retrieving latest challenge detail", e);
         }
     }
 

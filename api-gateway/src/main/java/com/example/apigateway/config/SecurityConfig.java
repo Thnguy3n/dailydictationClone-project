@@ -47,9 +47,14 @@ public class SecurityConfig {
                                 "/api/auth/**",
                                 "/api/category/list",
                                 "/api/challenge/list",
+                                "/api/challenge/continue-to-challenge",
+                                "/api/challenge/next-challenge",
+                                "/api/challenge/previous-challenge",
                                 "/api/challenge/check/**",
                                 "/api/lessons/list",
                                 "/api/sections/list",
+                                "/api/payment/premium-package/info/**",
+                                "/api/payment/premium-package/all",
                                 "api/topics/list").permitAll()
                         .pathMatchers("api/category/add").hasAnyRole("ADMIN")
                         .anyExchange().authenticated()

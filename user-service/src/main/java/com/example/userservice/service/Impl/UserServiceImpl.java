@@ -69,6 +69,14 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }
+        if (user.getPassword() == null) {
+            if(!changePasswordRequest.getNewPassword().matches("^(?=.*[A-Z])(?=.*[a-z])(?=.*\\d)(?=.*[!@#$%^&*]).*$")){
+                throw new ValidationException("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character.");
+            }
+            user.setPassword(passwordEncoder.encode(changePasswordRequest.getNewPassword()));
+            userRepository.save(user);
+            return new ResponseEntity<>(new ChangePasswordResponse("Password created successfully"), HttpStatus.OK);
+        }
         if(!isPasswordValid(user, changePasswordRequest.getOldPassword())) {
             return new ResponseEntity<>(new ChangePasswordResponse("Invalid old password"), HttpStatus.BAD_REQUEST);
         }
