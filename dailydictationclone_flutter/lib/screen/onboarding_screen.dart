@@ -674,6 +674,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           ),
           child: ElevatedButton(
             onPressed: () {
+              Navigator.pushNamed(context, '/upgradePremium');
               // Handle upgrade
             },
             style: ElevatedButton.styleFrom(

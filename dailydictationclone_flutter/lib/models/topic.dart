@@ -1,4 +1,3 @@
-
 class Topic {
   final int id;
   final String title;
@@ -6,6 +5,7 @@ class Topic {
   final String description;
   final String image;
   final String categoryTitle;
+  final int premiumTopic;
 
   Topic({
     required this.id,
@@ -14,6 +14,7 @@ class Topic {
     required this.description,
     required this.image,
     required this.categoryTitle,
+    required this.premiumTopic,
   });
 
   factory Topic.fromJson(Map<String, dynamic> json) {
@@ -24,6 +25,7 @@ class Topic {
       description: json['description'],
       image: json['image'],
       categoryTitle: json['categoryTitle'],
+      premiumTopic: json['premiumTopic'] ?? 0,
     );
   }
 }

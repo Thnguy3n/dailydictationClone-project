@@ -9,5 +9,4 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class QrRequest {
     private String purchaseId;
-    private Long bankInfoId;
 }

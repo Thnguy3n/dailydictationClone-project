@@ -59,6 +59,7 @@ public class TopicServiceImpl implements TopicService {
                     .levels(topicRequest.getLevels())
                     .description(topicRequest.getDescription())
                     .categoryEntity(categoryEntity)
+                    .premiumTopic(topicRequest.getPremiumTopic())
                     .image(topicRequest.getImage()).build();
             topicRepository.save(topicEntity);
             return new ResponseEntity<>(modelMapper.map(topicEntity, TopicResponse.class), HttpStatus.CREATED);

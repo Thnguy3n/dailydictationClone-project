@@ -27,6 +27,8 @@ public class TopicEntity {
     private String description;
     @Column(name = "image")
     private String image;
+    @Column(name = "premium_topic")
+    private Integer premiumTopic;
     @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL,mappedBy = "topicEntity")
     List<SectionEntity> sectionEntities = new ArrayList<>();
     @ManyToOne

@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -19,7 +20,11 @@ import java.util.UUID;
 @Table(name = "premium_purchase")
 public class PremiumPurchaseEntity {
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue(generator = "short_id")
+    @GenericGenerator(
+            name = "short_id",
+            strategy = "com.example.paymentservice.utils.ShortIdGenerator"
+    )
     private String id;
 
     @Column(name = "user_id", nullable = false)

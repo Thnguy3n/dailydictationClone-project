@@ -6,6 +6,7 @@ import com.example.audioservice.model.DTO.TranscriptMessage;
 import com.example.audioservice.model.Request.TranscriptRequest;
 import com.example.audioservice.model.Response.AssemblyResponse;
 import com.example.audioservice.model.Response.AssemblyWordInfoResponse;
+import com.example.audioservice.model.Response.ProgressResponse;
 import com.example.audioservice.model.Response.TranscriptJobResponse;
 import com.example.audioservice.repository.ChallengeJobRepository;
 import com.example.audioservice.repository.TranscriptJobRepository;
@@ -16,10 +17,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.apache.kafka.common.errors.ResourceNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.messaging.handler.annotation.Header;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -44,8 +51,8 @@ public class TranscriptServiceImpl implements TranscriptService {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final TranscriptJobRepository jobRepository;
     private final ChallengeJobRepository challengeJobRepository;
+    private final RestTemplate restTemplate;
 
-    //oke
     @Override
     public List<String> submitTranscriptJob(TranscriptRequest transcriptRequest) {
         String transcriptJobId = UUID.randomUUID().toString();
@@ -75,8 +82,6 @@ public class TranscriptServiceImpl implements TranscriptService {
         }
         return results;
     }
-
-    //oke
     private String objectToJson(Object object) {
         try {
             ObjectMapper objectMapper = new ObjectMapper();
@@ -86,7 +91,6 @@ public class TranscriptServiceImpl implements TranscriptService {
         }
     }
 
-    //oke
     @Override
     public TranscriptJobResponse getJobStatus(String jobId) {
         return jobRepository.findByJobId(jobId)
@@ -94,7 +98,6 @@ public class TranscriptServiceImpl implements TranscriptService {
                 .orElseThrow(() -> new ResourceNotFoundException("Transcript job not found with id: " + jobId));
     }
 
-    //oke
     private TranscriptJobResponse toTranscriptJobResponse(TranscriptJob job) {
         return TranscriptJobResponse.builder()
                 .jobId(job.getJobId())
@@ -109,7 +112,6 @@ public class TranscriptServiceImpl implements TranscriptService {
         return (status != null && status.getStatus().equals("COMPLETED")) ? status.getResult() : null;
     }
 
-    //oke
     @KafkaListener(topics = "transcript-requests", groupId = "transcript-group", containerFactory = "kafkaListenerContainerFactory")
     public void processTranscriptRequest(String message, @Header("kafka_receivedMessageKey") String jobId) {
         try {

@@ -133,9 +133,47 @@ class _TopicListPageState extends State<TopicListPage> {
         leading: topic.image.isNotEmpty
             ? Image.network(topic.image, width: 50, height: 50)
             : const Icon(Icons.book, size: 40),
-        title: Text(
-          topic.title,
-          style: const TextStyle(fontWeight: FontWeight.bold,color: Colors.white),
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                topic.title,
+                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+            // Hiển thị badge premium nếu premiumTopic = 1
+            if (topic.premiumTopic == 1)
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Colors.amber, Colors.orange],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.star,
+                      color: Colors.white,
+                      size: 16,
+                    ),
+                    SizedBox(width: 4),
+                    Text(
+                      'Premium',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -146,12 +184,25 @@ class _TopicListPageState extends State<TopicListPage> {
                 style: TextStyle(color: Colors.grey[500])),
           ],
         ),
+        // Thêm trailing icon premium nếu cần
+        trailing: topic.premiumTopic == 1
+            ? const Icon(
+          Icons.lock,
+          color: Colors.amber,
+          size: 20,
+        )
+            : const Icon(
+          Icons.arrow_forward_ios,
+          color: Colors.grey,
+          size: 16,
+        ),
         onTap: () {
           _navigateToSections(topic);
         },
       ),
     );
   }
+
   void _navigateToSections(Topic topic) {
     Navigator.push(
       context,
@@ -163,5 +214,4 @@ class _TopicListPageState extends State<TopicListPage> {
       ),
     );
   }
-
 }

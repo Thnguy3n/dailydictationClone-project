@@ -14,5 +14,4 @@ public class PaymentStatusResponse {
     private String status; // "PENDING", "PAID", "EXPIRED", "CANCELLED"
     private String message;
     private LocalDateTime checkedAt;
-    private TransactionData transactionData;
 }

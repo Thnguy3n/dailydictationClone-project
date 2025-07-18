@@ -24,7 +24,7 @@ import java.util.Map;
 @RestController(value = "addChallengeOfAdmin")
 @RequestMapping("/api/challenge")
 @RequiredArgsConstructor
-public class    ChallengeController {
+public class ChallengeController {
     private final ChallengeService challengeService;
     @Value("${jwt-secret}")
     private String secretKey;

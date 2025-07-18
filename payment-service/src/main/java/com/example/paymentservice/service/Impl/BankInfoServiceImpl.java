@@ -19,15 +19,20 @@ public class BankInfoServiceImpl implements BankInfoService {
     @Override
     public ResponseEntity<String> addBankInfo(BankInfoRequest bankInfoRequest) {
         try {
-            BankInfoEntity bankInfoEntity = BankInfoEntity.builder()
-                    .accountName(bankInfoRequest.getAccountName())
-                    .acqId(bankInfoRequest.getAcqId())
-                    .accountNumber(bankInfoRequest.getAccountNumber())
-                    .format("text")
-                    .template(bankInfoRequest.getTemplate())
-                    .build();
-            bankInfoRepository.save(bankInfoEntity);
-            return ResponseEntity.ok("Bank information added successfully");
+            List<BankInfoEntity> bankInfoEntityList = bankInfoRepository.findAll();
+            if(bankInfoEntityList.isEmpty()){
+                BankInfoEntity bankInfoEntity = BankInfoEntity.builder()
+                        .accountName(bankInfoRequest.getAccountName())
+                        .acqId(bankInfoRequest.getAcqId())
+                        .accountNumber(bankInfoRequest.getAccountNumber())
+                        .format("text")
+                        .template(bankInfoRequest.getTemplate())
+                        .build();
+                bankInfoRepository.save(bankInfoEntity);
+                return ResponseEntity.ok("Bank information added successfully");
+
+            }
+            return ResponseEntity.ok("Only one bank information can exist in the system.");
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error adding bank information: " + e.getMessage());
         }

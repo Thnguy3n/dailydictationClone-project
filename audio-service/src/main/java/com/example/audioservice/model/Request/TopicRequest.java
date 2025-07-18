@@ -17,5 +17,6 @@ public class TopicRequest {
     private String description;
     @NotBlank
     private String image;
+    private Integer premiumTopic;
     private Long categoryId;
 }

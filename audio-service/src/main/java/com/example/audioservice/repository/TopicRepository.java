@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository;
 
 public interface TopicRepository extends JpaRepository<TopicEntity, Long> {
 
+    TopicEntity findByIdAndPremiumTopic(Long id, Integer premiumTopic);
 }

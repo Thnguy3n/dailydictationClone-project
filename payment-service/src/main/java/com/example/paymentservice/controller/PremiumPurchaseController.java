@@ -1,6 +1,7 @@
 package com.example.paymentservice.controller;
 
 import com.example.paymentservice.model.request.PremiumPurchaseRequest;
+import com.example.paymentservice.model.response.PurchaseResponse;
 import com.example.paymentservice.service.PremiumPurchaseService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
@@ -24,8 +25,8 @@ public class PremiumPurchaseController {
     private String secretKey;
     private final PremiumPurchaseService premiumPurchaseService;
     @PostMapping
-    public ResponseEntity<String> purchasePremium(@RequestBody PremiumPurchaseRequest premiumPurchaseRequest,
-                                                  HttpServletRequest request) {
+    public ResponseEntity<PurchaseResponse> purchasePremium(@RequestBody PremiumPurchaseRequest premiumPurchaseRequest,
+                                                            HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         String token = header.substring(7);
         String username = getUsernameFromToken(token);

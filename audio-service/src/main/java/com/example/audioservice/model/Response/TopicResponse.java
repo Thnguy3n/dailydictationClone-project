@@ -11,5 +11,5 @@ public class TopicResponse {
     private String description;
     private String image;
     private String categoryTitle;
-
+    private Integer premiumTopic;
 }

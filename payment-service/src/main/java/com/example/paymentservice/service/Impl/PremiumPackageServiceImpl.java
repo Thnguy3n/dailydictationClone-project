@@ -79,25 +79,36 @@ public class PremiumPackageServiceImpl implements PremiumPackageService {
         List<PremiumPackageEntity> entities = premiumPackageRepository.findAll();
         LocalDateTime now = LocalDateTime.now(ZoneId.of("Asia/Ho_Chi_Minh"));
 
-        return entities.stream()
+        List<PremiumPackageEntity> updatedEntities = entities.stream()
                 .map(entity -> {
                     boolean isDiscountActive = now.isAfter(entity.getDiscountStart()) &&
                             now.isBefore(entity.getDiscountEnd());
 
-                    return PremiumPackageResponse.builder()
-                            .id(entity.getId())
-                            .name(entity.getName())
-                            .originalPrice(entity.getOriginalPrice())
-                            .price(isDiscountActive ?
-                                    calculateDiscountedPrice(entity.getOriginalPrice(), entity.getDiscount()) :
-                                    entity.getOriginalPrice())
-                            .discount(entity.getDiscount())
-                            .discountStatus(isDiscountActive ? "ON" : "OFF")
-                            .discountStart(entity.getDiscountStart())
-                            .discountEnd(entity.getDiscountEnd())
-                            .description(entity.getDescription())
-                            .build();
+                    BigDecimal price = isDiscountActive ?
+                            calculateDiscountedPrice(entity.getOriginalPrice(), entity.getDiscount()) :
+                            entity.getOriginalPrice();
+                    String discountStatus = isDiscountActive ? "ON" : "OFF";
+
+                    entity.setPrice(price);
+                    entity.setDiscountStatus(discountStatus);
+                    return entity;
                 })
+                .collect(Collectors.toList());
+
+        premiumPackageRepository.saveAll(updatedEntities);
+
+        return updatedEntities.stream()
+                .map(entity -> PremiumPackageResponse.builder()
+                        .id(entity.getId())
+                        .name(entity.getName())
+                        .originalPrice(entity.getOriginalPrice())
+                        .price(entity.getPrice())
+                        .discount(entity.getDiscount())
+                        .discountStatus(entity.getDiscountStatus())
+                        .discountStart(entity.getDiscountStart())
+                        .discountEnd(entity.getDiscountEnd())
+                        .description(entity.getDescription())
+                        .build())
                 .collect(Collectors.toList());
     }
 

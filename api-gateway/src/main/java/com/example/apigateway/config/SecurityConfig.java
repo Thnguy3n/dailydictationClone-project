@@ -55,6 +55,8 @@ public class SecurityConfig {
                                 "/api/sections/list",
                                 "/api/payment/premium-package/info/**",
                                 "/api/payment/premium-package/all",
+                                "api/payment/qr/generate",
+                                "api/payment/qr/status/**",
                                 "api/topics/list").permitAll()
                         .pathMatchers("api/category/add").hasAnyRole("ADMIN")
                         .anyExchange().authenticated()

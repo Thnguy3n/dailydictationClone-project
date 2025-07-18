@@ -40,8 +40,7 @@ public class QRTransactionServiceImpl implements QRTransactionService {
     public ResponseEntity<QrResponse> generateQrCode(QrRequest qrRequest) {
         PremiumPurchaseEntity premiumPurchase = premiumPurchaseRepository.findById(qrRequest.getPurchaseId())
                 .orElseThrow(() -> new RuntimeException("Premium purchase not found"));
-        BankInfoEntity bankInfo = bankInfoRepository.findById(qrRequest.getBankInfoId())
-                .orElseThrow(() -> new RuntimeException("Bank info not found"));
+        BankInfoEntity bankInfo = bankInfoRepository.findAll().getFirst();
 
         if (!"PENDING".equals(premiumPurchase.getStatus())) {
             return ResponseEntity.badRequest().build();
@@ -50,8 +49,8 @@ public class QRTransactionServiceImpl implements QRTransactionService {
         QrTransactionEntity qrTransactionEntity =QrTransactionEntity.builder()
                 .purchase(premiumPurchase)
                 .bankInfo(bankInfo)
-                .addInfo("Payment for: " + premiumPurchase.getId())
-                .expiresAt(LocalDateTime.now().plusMinutes(5))
+                .addInfo("Payment for " + premiumPurchase.getId())
+                .expiresAt(LocalDateTime.now().plusMinutes(20))
                 .build();
 
         QrGenerateRequest qrGenerateRequest = QrGenerateRequest.builder()
@@ -66,6 +65,8 @@ public class QRTransactionServiceImpl implements QRTransactionService {
         QrResponse qrResponse = vietQrIoGenerate(qrGenerateRequest).getBody();
         qrTransactionEntity.setQrDataUrl(qrResponse.getData().getQrDataURL());
         qrTransactionRepository.save(qrTransactionEntity);
+        qrResponse.setId(qrTransactionEntity.getId());
+        qrResponse.setExpireAt(qrTransactionEntity.getExpiresAt());
         return ResponseEntity.ok(qrResponse);
     }
     private ResponseEntity<QrResponse> vietQrIoGenerate(QrGenerateRequest qrRequest) {
@@ -87,8 +88,7 @@ public class QRTransactionServiceImpl implements QRTransactionService {
             return ResponseEntity.ok(new PaymentStatusResponse(
                     "EXPIRED",
                     "QR code has expired",
-                    LocalDateTime.now(),
-                    null
+                    LocalDateTime.now()
             ));
         }
 
@@ -126,19 +126,14 @@ public class QRTransactionServiceImpl implements QRTransactionService {
                 BankTransactionResponse bankResponse = response.getBody();
 
                 if (!bankResponse.isError() && bankResponse.getData() != null && !bankResponse.getData().isEmpty()) {
-                    TransactionDetail latestTransaction = bankResponse.getData().get(0);
+                    TransactionDetail latestTransaction = bankResponse.getData().get(1);
 
                     if (isTransactionMatched(latestTransaction, qrTransaction)) {
                         return new PaymentStatusResponse(
                                 "PAID",
                                 "Payment confirmed",
-                                LocalDateTime.now(),
-                                new TransactionData(
-                                        latestTransaction.getTransactionId().toString(),
-                                        latestTransaction.getDescription(),
-                                        latestTransaction.getAmount(),
-                                        parseTransactionTime(latestTransaction.getTransactionTime())
-                                )
+                                LocalDateTime.now()
+
                         );
                     }
                 }
@@ -146,9 +141,8 @@ public class QRTransactionServiceImpl implements QRTransactionService {
 
             return new PaymentStatusResponse(
                     "PENDING",
-                    "Payment not found",
-                    LocalDateTime.now(),
-                    null
+                    "Payment is not confirmed yet",
+                    LocalDateTime.now()
             );
 
         } catch (Exception e) {
@@ -156,8 +150,7 @@ public class QRTransactionServiceImpl implements QRTransactionService {
             return new PaymentStatusResponse(
                     "ERROR",
                     "Unable to check payment status",
-                    LocalDateTime.now(),
-                    null
+                    LocalDateTime.now()
             );
         }
     }
@@ -165,6 +158,11 @@ public class QRTransactionServiceImpl implements QRTransactionService {
                                          QrTransactionEntity qrTransaction) {
         String expectedDescription = qrTransaction.getAddInfo(); // "Payment for: UUID"
         String actualDescription = transaction.getDescription();
+        int paymentIndex = actualDescription.indexOf("Payment");
+
+        String result = (paymentIndex != -1)
+                ? actualDescription.substring(paymentIndex)
+                : "";
 
         BigDecimal expectedAmount = qrTransaction.getPurchase().getPrice();
         BigDecimal actualAmount = transaction.getAmount();
@@ -172,8 +170,8 @@ public class QRTransactionServiceImpl implements QRTransactionService {
         String expectedAccount = qrTransaction.getBankInfo().getAccountNumber();
         String actualAccount = transaction.getAccountNumber();
 
-        boolean descriptionMatch = actualDescription != null &&
-                actualDescription.trim().equals(expectedDescription.trim());
+        boolean descriptionMatch = result != null &&
+                result.trim().equals(expectedDescription.trim());
         boolean amountMatch = actualAmount.compareTo(expectedAmount) == 0;
         boolean accountMatch = actualAccount != null &&
                 actualAccount.equals(expectedAccount);
@@ -197,6 +195,9 @@ public class QRTransactionServiceImpl implements QRTransactionService {
     private void updatePurchaseStatus(PremiumPurchaseEntity purchase, String status) {
         purchase.setStatus(status);
         premiumPurchaseRepository.save(purchase);
+        if("PAID".equals(status)) {
+            updateUserPremiumStatus(purchase.getUserId(), 1);
+        }
         log.info("Updated purchase {} status to {}", purchase.getId(), status);
     }
 
@@ -229,9 +230,14 @@ public class QRTransactionServiceImpl implements QRTransactionService {
         return ResponseEntity.ok(new PaymentStatusResponse(
                 "EXPIRED",
                 "Payment timeout - QR code expired",
-                LocalDateTime.now(),
-                null
+                LocalDateTime.now()
         ));
     }
-
+    private void updateUserPremiumStatus(String userId, Integer premiumStatus) {
+        String url = String.format(
+                "https://user-service/api/users/update-premium-status/%s?premiumStatus=%d",
+                userId, premiumStatus
+        );
+        restTemplate.postForEntity(url, null, Void.class);
+    }
 }

@@ -29,6 +29,8 @@ class _SectionListPageState extends State<SectionListPage>
   List<Section> _sections = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isPremium = false;
+  String? _premiumMessage;
 
   // Track expanded sections and their lessons
   final Map<int, bool> _expandedSections = {};
@@ -54,14 +56,17 @@ class _SectionListPageState extends State<SectionListPage>
 
   Future<void> _loadSections() async {
     try {
-      final sections = await _sectionService.getSections(widget.topicId);
+      final result = await _sectionService.getSections(widget.topicId);
+
       setState(() {
-        _sections = sections;
+        _sections = result.sections;
+        _isPremium = result.isPremium;
+        _premiumMessage = result.message;
         _isLoading = false;
       });
 
       // Initialize animation controllers for each section
-      for (var section in sections) {
+      for (var section in result.sections) {
         _animationControllers[section.id] = AnimationController(
           duration: const Duration(milliseconds: 300),
           vsync: this,
@@ -209,6 +214,11 @@ class _SectionListPageState extends State<SectionListPage>
       );
     }
 
+    // Handle premium content
+    if (_isPremium) {
+      return _buildPremiumContent();
+    }
+
     if (_sections.isEmpty) {
       return const Center(
         child: Text(
@@ -228,6 +238,102 @@ class _SectionListPageState extends State<SectionListPage>
       separatorBuilder: (context, index) {
         return const SizedBox(height: 8);
       },
+    );
+  }
+
+  Widget _buildPremiumContent() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Premium icon
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [Colors.amber, Colors.orange],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(40),
+              ),
+              child: const Icon(
+                Icons.star,
+                color: Colors.white,
+                size: 40,
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Premium message
+            Text(
+              _premiumMessage ?? 'This topic is premium, please subscribe to access it.',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 16),
+
+            Text(
+              'Unlock all premium content with a subscription',
+              style: TextStyle(
+                color: Colors.grey[300],
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+            const SizedBox(height: 32),
+
+            // Action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: () {
+                    // Navigate to subscription page
+                    // Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionPage()));
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.amber,
+                    foregroundColor: Colors.black,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  icon: const Icon(Icons.star, size: 20),
+                  label: const Text('Subscribe Now'),
+                ),
+
+                const SizedBox(width: 16),
+
+                OutlinedButton(
+                  onPressed: () {
+                    setState(() {
+                      _isLoading = true;
+                      _isPremium = false;
+                      _premiumMessage = null;
+                    });
+                    _loadSections();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: Colors.white54),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -494,7 +600,7 @@ class _SectionListPageState extends State<SectionListPage>
                 context,
                 MaterialPageRoute(
                   builder: (context) => ChallengeScreen(
-                    lessonId: lesson.id, // You'll need to add id to LessonResponse model
+                    lessonId: lesson.id,
                     lessonTitle: lesson.title,
                   ),
                 ),

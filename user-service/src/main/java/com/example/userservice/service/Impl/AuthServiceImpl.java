@@ -42,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
                 .email(userRequest.getEmail())
                 .fullName(userRequest.getFullName())
                 .isActive(1)
+                .premiumStatus(0)
                 .role("USER")
                 .createAt(LocalDateTime.now())
                 .modifiedAt(null)
@@ -64,6 +65,7 @@ public class AuthServiceImpl implements AuthService {
                     .fullName(loginRequest.getDisplayName())
                     .isActive(1)
                     .role("USER")
+                    .premiumStatus(0)
                     .createAt(LocalDateTime.now())
                     .modifiedAt(null)
                     .build();

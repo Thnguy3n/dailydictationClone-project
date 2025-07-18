@@ -199,7 +199,7 @@ class _PackageCardState extends State<PackageCard>
                             originalPrice: widget.package.originalPrice,
                             finalPrice: widget.package.price,
                             textStyle: TextStyle(
-                              fontSize: 28,
+                              fontSize: 22,
                               fontWeight: FontWeight.bold,
                               color: widget.package.isOnSale
                                   ? const Color(0xFF4CAF50)

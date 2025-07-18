@@ -34,6 +34,8 @@ public class UserEntity {
     private String email;
     @Column(name = "isActive")
     private Integer isActive;
+    @Column(name = "premiumStatus")
+    private Integer premiumStatus;
     @CreatedDate
     @Column(name = "createAt")
     private LocalDateTime createAt;

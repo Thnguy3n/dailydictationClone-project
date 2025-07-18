@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../models/premium_package.dart';
 import '../service/payment_service.dart';
 import '../widgets/package_card.dart';
+import '../widgets/payment_dialog.dart';
 
 class UpgradePremiumScreen extends StatefulWidget {
   const UpgradePremiumScreen({Key? key}) : super(key: key);
@@ -16,6 +17,7 @@ class _UpgradePremiumScreenState extends State<UpgradePremiumScreen>
   List<PremiumPackage> _packages = [];
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isProcessingPayment = false;
 
   late AnimationController _headerController;
   late Animation<double> _headerFadeAnimation;
@@ -65,7 +67,6 @@ class _UpgradePremiumScreenState extends State<UpgradePremiumScreen>
         _isLoading = false;
       });
 
-      // Start header animation after data loads
       _headerController.forward();
 
     } catch (e) {
@@ -76,18 +77,65 @@ class _UpgradePremiumScreenState extends State<UpgradePremiumScreen>
     }
   }
 
-  void _onPackageTap(PremiumPackage package) {
-    // Handle package selection/purchase
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Selected: ${package.name}'),
-        backgroundColor: const Color(0xFF4CAF50), // Green for dark theme
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
+  Future<void> _onPackageTap(PremiumPackage package) async {
+    if (_isProcessingPayment) return;
+
+    try {
+      setState(() {
+        _isProcessingPayment = true;
+      });
+
+      // Show loading dialog
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+          ),
         ),
-      ),
-    );
+      );
+
+      final purchaseResponse = await PaymentService.purchasePremium(
+        package.id,
+      );
+
+      final qrResponse = await PaymentService.generateQrCode(
+        purchaseResponse.purchaseId,
+      );
+
+      Navigator.of(context).pop();
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => PaymentDialog(
+          qrDataURL: qrResponse.data.qrDataURL,
+          packageName: package.name,
+          price: package.price,
+          expireAt: qrResponse.expireAt,
+          qrTransactionId: qrResponse.id,
+        ),
+      );
+
+    } catch (e) {
+      Navigator.of(context).pop();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Lỗi: ${e.toString()}'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+        ),
+      );
+    } finally {
+      setState(() {
+        _isProcessingPayment = false;
+      });
+    }
   }
 
   @override
@@ -329,7 +377,10 @@ class _UpgradePremiumScreenState extends State<UpgradePremiumScreen>
             child: SlideTransition(
               position: _headerSlideAnimation,
               child: Container(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 10,
+                ),
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

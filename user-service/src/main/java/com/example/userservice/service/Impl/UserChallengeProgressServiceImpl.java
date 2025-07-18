@@ -43,7 +43,7 @@ public class UserChallengeProgressServiceImpl implements UserChallengeProgressSe
         if (existingJob.isPresent() &&
                 (existingJob.get().getStatus().equals("COMPLETED") ||
                         existingJob.get().getStatus().equals("FAILED"))) {
-            return;
+            return ;
         }
 
         if (existingJob.isEmpty()) {

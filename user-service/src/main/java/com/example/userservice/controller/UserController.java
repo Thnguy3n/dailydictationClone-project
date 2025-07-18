@@ -99,4 +99,23 @@ public class UserController {
                 .getBody();
         return claims.getSubject();
     }
+    @PostMapping("/update-premium-status/{userId}")
+    public ResponseEntity<?> updateUserPremiumStatus(@PathVariable String userId,
+                                                     @RequestParam Integer premiumStatus){
+        UserEntity user = userRepository.findById(userId);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        user.setPremiumStatus(premiumStatus);
+        userRepository.save(user);
+        return ResponseEntity.ok().build();
+    }
+    @GetMapping("/premium-status/{username}")
+    public ResponseEntity<Integer> getUserPremiumStatus(@PathVariable String username) {
+        UserEntity user = userRepository.findByUsername(username);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+        return ResponseEntity.ok(user.getPremiumStatus());
+    }
 }
