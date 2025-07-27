@@ -1,15 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
-import 'package:crypto/crypto.dart';
-import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter/foundation.dart';
-import 'package:app_links/app_links.dart';
-
 class AuthService {
   static const String baseUrl = 'http://10.0.2.2:8181/api';
   static const String gatewayUrl = 'http://10.0.2.2:8181'; // API Gateway URL

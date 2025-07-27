@@ -15,6 +15,7 @@ class QrResponse {
   final int id;
   final String code;
   final String description;
+  final String addInfo;
   final QrData data;
   final DateTime expireAt;
 
@@ -22,6 +23,7 @@ class QrResponse {
     required this.id,
     required this.code,
     required this.description,
+    required this.addInfo,
     required this.data,
     required this.expireAt
   });
@@ -31,6 +33,7 @@ class QrResponse {
       id: json['id'] ?? 0,
       code: json['code'] ?? '',
       description: json['description'] ?? '',
+      addInfo: json['addInfo'] ?? '',
       data: QrData.fromJson(json['data'] ?? {}),
       expireAt: DateTime.parse(json['expireAt'] ?? DateTime.now().toIso8601String()),
     );

@@ -299,8 +299,7 @@ class _SectionListPageState extends State<SectionListPage>
               children: [
                 ElevatedButton.icon(
                   onPressed: () {
-                    // Navigate to subscription page
-                    // Navigator.push(context, MaterialPageRoute(builder: (_) => SubscriptionPage()));
+                    Navigator.pushNamed(context, '/upgradePremium');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.amber,
@@ -309,6 +308,7 @@ class _SectionListPageState extends State<SectionListPage>
                   ),
                   icon: const Icon(Icons.star, size: 20),
                   label: const Text('Subscribe Now'),
+
                 ),
 
                 const SizedBox(width: 16),

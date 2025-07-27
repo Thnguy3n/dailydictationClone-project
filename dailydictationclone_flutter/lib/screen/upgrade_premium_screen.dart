@@ -115,6 +115,7 @@ class _UpgradePremiumScreenState extends State<UpgradePremiumScreen>
           price: package.price,
           expireAt: qrResponse.expireAt,
           qrTransactionId: qrResponse.id,
+          addInfo: qrResponse.addInfo,
         ),
       );
 

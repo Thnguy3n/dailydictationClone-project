@@ -13,7 +13,8 @@ class PaymentDialog extends StatefulWidget {
   final String packageName;
   final double price;
   final DateTime expireAt;
-  final int qrTransactionId; // Thêm qrTransactionId từ QrResponse
+  final int qrTransactionId;
+  final String addInfo;
 
   const PaymentDialog({
     Key? key,
@@ -21,6 +22,7 @@ class PaymentDialog extends StatefulWidget {
     required this.packageName,
     required this.price,
     required this.expireAt,
+    required this.addInfo,
     required this.qrTransactionId,
   }) : super(key: key);
 
@@ -34,6 +36,7 @@ class _PaymentDialogState extends State<PaymentDialog>
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
+  late String _addInfo;
 
   // Countdown timer variables
   late Timer _countdownTimer;
@@ -611,10 +614,10 @@ class _PaymentDialogState extends State<PaymentDialog>
                                     color: const Color(0xFF2D2D2D),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  child: const Column(
+                                  child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
+                                      const Text(
                                         'Hướng dẫn thanh toán:',
                                         style: TextStyle(
                                           color: Colors.white,
@@ -622,14 +625,36 @@ class _PaymentDialogState extends State<PaymentDialog>
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
-                                      SizedBox(height: 8),
-                                      Text(
-                                        '1. Mở ứng dụng ngân hàng\n2. Quét mã QR trên\n3. Xác nhận thanh toán\n4. Đợi xử lý giao dịch',
-                                        style: TextStyle(
-                                          color: Colors.white70,
-                                          fontSize: 14,
-                                          height: 1.5,
-                                        ),
+                                      const SizedBox(height: 8),
+                                      Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          const Text(
+                                            '1. Mở ứng dụng ngân hàng\n2. Quét mã QR trên\n3. Chuyển khoản với nội dung:',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                             Text(
+                                              '"'+widget.addInfo+'"',
+                                              style: const TextStyle(
+                                                color: Color(0xFF4CAF50),
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.bold,
+                                                fontFamily: 'monospace',
+                                              ),
+                                          ),
+                                          const Text(
+                                            '4. Đợi xử lý giao dịch',
+                                            style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ],
                                   ),
