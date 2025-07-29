@@ -32,5 +32,8 @@ public class LessonController {
     public ResponseEntity<LessonInfo> getLessonInfo(@PathVariable Long lessonId) {
         return lessonService.getLessonInfo(lessonId);
     }
-
+    @GetMapping("/sections/{sectionId}/info")
+    public ResponseEntity<List<LessonInfo>> getLessonsBySectionId(@PathVariable Long sectionId) {
+        return lessonService.getLessonsBySectionId(sectionId);
+    }
 }

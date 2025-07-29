@@ -1,9 +1,12 @@
 package com.example.userservice.controller;
 
 import com.example.userservice.model.request.OAuth2LoginRequest;
+import com.example.userservice.model.request.SendOtpRequest;
+import com.example.userservice.model.request.VerifyOtpRequest;
 import com.example.userservice.model.response.AuthResponse;
 import com.example.userservice.model.request.UserRequest;
 import com.example.userservice.model.response.OAuthResponse;
+import com.example.userservice.model.response.OtpResponse;
 import com.example.userservice.model.response.UserResponse;
 import com.example.userservice.service.AuthService;
 import com.example.userservice.service.UserService;
@@ -37,6 +40,14 @@ public class AuthController {
         return authService.registerOrUpdateOAuth2UserAndGenerateToken(loginRequest);
     }
 
+    @PostMapping("/send-otp")
+    public ResponseEntity<OtpResponse> sendOtp(@Valid @RequestBody SendOtpRequest request) {
+        return authService.sendOtpForEmailVerification(request);
+    }
 
+    @PostMapping("/verify-otp")
+    public ResponseEntity<OtpResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        return authService.verifyEmailOtp(request);
+    }
 
 }

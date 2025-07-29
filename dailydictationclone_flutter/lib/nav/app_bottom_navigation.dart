@@ -19,22 +19,6 @@ class AppBottomNavigation extends StatefulWidget {
 
 class _AppBottomNavigationState extends State<AppBottomNavigation> {
   bool _isNavigating = false;
-  // void _handleNavigation(int index) {
-  //   switch (index) {
-  //     case 0: // Home
-  //       Navigator.pushReplacementNamed(widget.context, '/');
-  //       break;
-  //     case 1: // Practice
-  //       Navigator.pushNamed(widget.context, '/topics');
-  //       break;
-  //     case 2: // Profile
-  //       Navigator.pushNamed(widget.context, '/signIn');
-  //       break;
-  //     case 3: // More
-  //       // Handle more options
-  //       break;
-  //   }
-  // }
 
   Future<void> _handleNavigation(int index) async {
     // Prevent multiple rapid taps

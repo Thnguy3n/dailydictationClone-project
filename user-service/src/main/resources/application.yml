@@ -10,7 +10,7 @@ spring:
     driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: none
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -38,6 +38,20 @@ spring:
       enable-auto-commit: true
       auto-offset-reset: latest
       auto-commit-interval: 1000
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${EMAIL_USERNAME}
+    password: ${EMAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+    task:
+      scheduling:
+        enabled: true
 eureka:
   client:
     serviceUrl:

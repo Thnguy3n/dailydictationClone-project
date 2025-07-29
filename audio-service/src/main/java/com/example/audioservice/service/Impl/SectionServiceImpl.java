@@ -2,24 +2,30 @@ package com.example.audioservice.service.Impl;
 
 import com.example.audioservice.entity.SectionEntity;
 import com.example.audioservice.entity.TopicEntity;
+import com.example.audioservice.model.Request.SectionFilter;
 import com.example.audioservice.model.Request.SectionRequest;
 import com.example.audioservice.model.Response.SectionResponse;
 import com.example.audioservice.repository.SectionRepository;
 import com.example.audioservice.repository.TopicRepository;
 import com.example.audioservice.service.SectionService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SectionServiceImpl implements SectionService {
     private final SectionRepository sectionRepository;
     private final TopicRepository topicRepository;
@@ -82,5 +88,89 @@ public class SectionServiceImpl implements SectionService {
         } else {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Error fetching user premium status");
         }
+    }
+    @Override
+    public ResponseEntity<List<SectionResponse>> getSectionsByFilter(SectionFilter filter, Long topicId) {
+        try {
+            List<SectionEntity> sections = buildFilterQuery(filter, topicId);
+
+            List<SectionResponse> responses = sections.stream()
+                    .map(this::mapToSectionResponse)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            log.error("Error filtering sections: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    @Override
+    public ResponseEntity<List<SectionResponse>> getSectionsByFilterWithAuthenticated(SectionFilter filter, Long topicId, String username) {
+        try {
+            List<SectionEntity> sections = buildFilterQuery(filter, topicId);
+
+            if (filter.getChallenge_progress() != null && !filter.getChallenge_progress().isEmpty()) {
+                sections = filterByUserProgress(sections, username, filter.getChallenge_progress());
+            }
+
+            List<SectionResponse> responses = sections.stream()
+                    .map(this::mapToSectionResponse)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
+            log.error("Error filtering sections with authentication: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    private List<SectionEntity> filterByUserProgress(List<SectionEntity> sections, String username, String progressFilter) {
+        try {
+            String url = "http://user-service/api/user-progress/sections/filter";
+
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("username", username);
+            requestBody.put("sectionIds", sections.stream().map(SectionEntity::getId).collect(Collectors.toList()));
+            requestBody.put("progressFilter", progressFilter);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+
+            ResponseEntity<List<Long>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.POST,
+                    entity,
+                    new ParameterizedTypeReference<List<Long>>() {}
+            );
+
+            List<Long> filteredSectionIds = response.getBody();
+            if (filteredSectionIds == null || filteredSectionIds.isEmpty()) {
+                return Collections.emptyList();
+            }
+
+            return sections.stream()
+                    .filter(section -> filteredSectionIds.contains(section.getId()))
+                    .collect(Collectors.toList());
+
+        } catch (Exception e) {
+            log.error("Error filtering by user progress: {}", e.getMessage());
+            return sections;
+        }
+    }
+    private List<SectionEntity> buildFilterQuery(SectionFilter filter, Long topicId) {
+        return sectionRepository.findSectionsByFilter(
+                topicId,
+                filter.getLevel(),
+                filter.getLessonTitle()
+        );
+    }
+
+    private SectionResponse mapToSectionResponse(SectionEntity section) {
+        return SectionResponse.builder()
+                .id(section.getId())
+                .title(section.getTitle())
+                .level(section.getLevel())
+                .build();
     }
 }

@@ -53,6 +53,8 @@ public class SecurityConfig {
                                 "/api/challenge/check/**",
                                 "/api/lessons/list",
                                 "/api/sections/list",
+                                "/api/sections/filter",
+                                "api/lessons/sections/**",
                                 "/api/payment/premium-package/info/**",
                                 "/api/payment/premium-package/all",
                                 "api/payment/qr/generate",

@@ -1,19 +1,21 @@
 import 'package:dailydictationclone_flutter/screen/update_password_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../nav/app_bottom_navigation.dart';
+import '../provider/auth_providers.dart';
 import '../service/auth_service.dart';
 import '../service/user_service.dart';
 import 'edit_profile_screen.dart';
 import 'learning_progress_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   ProfileResponse? _userProfile;
   bool _isLoading = true;
   String? _errorMessage;
@@ -56,6 +58,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _signOut() async {
     await AuthService.signOut();
+    ref.invalidate(authStatusProvider);
     if (mounted) {
       Navigator.pushReplacementNamed(context, '/signIn');
     }

@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/section.dart';
+import '../../models/section_filter.dart';
 import '../../models/lesson.dart';
 import '../locator/locator.dart';
 import '../nav/app_bottom_navigation.dart';
 import '../service/section_service.dart';
 import '../service/lesson_service.dart';
+import '../provider/auth_providers.dart';
 import 'challenge_screen.dart';
 
-class SectionListPage extends StatefulWidget {
+class SectionListPage extends ConsumerStatefulWidget {
   final int topicId;
   final String topicTitle;
 
@@ -18,10 +21,10 @@ class SectionListPage extends StatefulWidget {
   });
 
   @override
-  State<SectionListPage> createState() => _SectionListPageState();
+  ConsumerState<SectionListPage> createState() => _SectionListPageState();
 }
 
-class _SectionListPageState extends State<SectionListPage>
+class _SectionListPageState extends ConsumerState<SectionListPage>
     with TickerProviderStateMixin {
   late final SectionService _sectionService = getIt<SectionService>();
   late final LessonService _lessonService = getIt<LessonService>();
@@ -32,7 +35,23 @@ class _SectionListPageState extends State<SectionListPage>
   bool _isPremium = false;
   String? _premiumMessage;
 
-  // Track expanded sections and their lessons
+  bool _showFilter = false;
+  late AnimationController _filterAnimationController;
+  late Animation<double> _filterAnimation;
+  SectionFilter _currentFilter = SectionFilter();
+
+  final TextEditingController _lessonTitleController = TextEditingController();
+  String? _selectedLevel;
+  String? _selectedProgress;
+
+  final List<String> _levelOptions = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  final List<String> _progressOptions = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'];
+  final Map<String, String> _progressLabels = {
+    'NOT_STARTED': 'Not Started',
+    'IN_PROGRESS': 'In Progress',
+    'COMPLETED': 'Completed',
+  };
+
   final Map<int, bool> _expandedSections = {};
   final Map<int, List<LessonResponse>> _sectionLessons = {};
   final Map<int, bool> _loadingLessons = {};
@@ -42,11 +61,21 @@ class _SectionListPageState extends State<SectionListPage>
   @override
   void initState() {
     super.initState();
+    _filterAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _filterAnimation = CurvedAnimation(
+      parent: _filterAnimationController,
+      curve: Curves.easeInOut,
+    );
     _loadSections();
   }
 
   @override
   void dispose() {
+    _filterAnimationController.dispose();
+    _lessonTitleController.dispose();
     // Dispose all animation controllers
     for (var controller in _animationControllers.values) {
       controller.dispose();
@@ -55,8 +84,30 @@ class _SectionListPageState extends State<SectionListPage>
   }
 
   Future<void> _loadSections() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     try {
-      final result = await _sectionService.getSections(widget.topicId);
+      SectionResult result;
+
+      // Lấy trạng thái xác thực từ Riverpod provider
+      // Lưu ý: ref.read() chỉ lấy giá trị hiện tại một lần, không lắng nghe thay đổi
+      // Với trường hợp này (kiểm tra khi load sections), ref.read() là phù hợp.
+      final isAuthenticated = await ref.read(authStatusProvider.future);
+
+      SectionFilter finalFilter = _currentFilter;
+      if (!isAuthenticated) {
+        finalFilter = finalFilter.copyWith(challengeProgress: null);
+      }
+
+
+      if (finalFilter.isEmpty) {
+        result = await _sectionService.getSections(widget.topicId);
+      } else {
+        result = await _sectionService.getFilteredSections(widget.topicId, finalFilter); // Sử dụng finalFilter
+      }
 
       setState(() {
         _sections = result.sections;
@@ -78,6 +129,46 @@ class _SectionListPageState extends State<SectionListPage>
         _isLoading = false;
       });
     }
+  }
+
+  void _toggleFilter() {
+    setState(() {
+      _showFilter = !_showFilter;
+    });
+
+    if (_showFilter) {
+      _filterAnimationController.forward();
+    } else {
+      _filterAnimationController.reverse();
+    }
+  }
+
+  void _applyFilter() async {
+    final isAuthenticated = await ref.read(authStatusProvider.future);
+
+    setState(() {
+      _currentFilter = SectionFilter(
+        level: _selectedLevel?.isNotEmpty == true ? _selectedLevel : null,
+        lessonTitle: _lessonTitleController.text.isNotEmpty ? _lessonTitleController.text : null,
+        challengeProgress: !isAuthenticated
+            ? null
+            : (_selectedProgress?.isNotEmpty == true ? _selectedProgress : null),
+      );
+    });
+
+    _loadSections();
+    _toggleFilter();
+  }
+
+  void _clearFilter() {
+    setState(() {
+      _selectedLevel = null;
+      _selectedProgress = null;
+      _lessonTitleController.clear();
+      _currentFilter = SectionFilter();
+    });
+
+    _loadSections();
   }
 
   Future<void> _toggleSection(Section section) async {
@@ -125,6 +216,10 @@ class _SectionListPageState extends State<SectionListPage>
 
   @override
   Widget build(BuildContext context) {
+    // Lắng nghe trạng thái đăng nhập từ authStatusProvider
+    // Dùng ref.watch() để widget tự động rebuild khi trạng thái này thay đổi (sau khi Future hoàn thành)
+    final isAuthenticatedAsync = ref.watch(authStatusProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFF2C3E50),
       appBar: AppBar(
@@ -143,9 +238,8 @@ class _SectionListPageState extends State<SectionListPage>
             onTap: () => Navigator.pop(context),
             child: Container(
               width: 44,
-              height: 44,
+              height: 40,
               decoration: BoxDecoration(
-                color: const Color(0xFF34495E),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -156,17 +250,62 @@ class _SectionListPageState extends State<SectionListPage>
             ),
           ),
         ),
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black45,
-            border: Border.all(color: Colors.black26, width: 1),
-            borderRadius: BorderRadius.circular(25),
+        actions: [
+          // Filter toggle button
+          Padding(
+            padding: const EdgeInsets.only(right: 12.0),
+            child: GestureDetector(
+              onTap: _toggleFilter,
+              child: Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: _showFilter ? const Color(0xFF7FB3D3) : const Color(0xFF34495E),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.tune,
+                  color: _showFilter ? Colors.black : Colors.white,
+                  size: 20,
+                ),
+              ),
+            ),
           ),
-          child: _buildBody(),
-        ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Filter Panel
+          AnimatedBuilder(
+            animation: _filterAnimation,
+            builder: (context, child) {
+              return ClipRect(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  heightFactor: _filterAnimation.value,
+                  child: child,
+                ),
+              );
+            },
+            // Truyền isAuthenticatedAsync vào _buildFilterPanel
+            child: _buildFilterPanel(isAuthenticatedAsync),
+          ),
+
+          // Main Content
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black45,
+                  border: Border.all(color: Colors.black26, width: 1),
+                  borderRadius: BorderRadius.circular(25),
+                ),
+                child: _buildBody(),
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: AppBottomNavigation(
         currentIndex: 2,
@@ -175,7 +314,216 @@ class _SectionListPageState extends State<SectionListPage>
     );
   }
 
+  // Cập nhật hàm _buildFilterPanel để nhận isAuthenticatedAsync
+  Widget _buildFilterPanel(AsyncValue<bool> isAuthenticatedAsync) {
+    return Container(
+      color: const Color(0xFF34495E),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.filter_list, color: Colors.white, size: 20),
+              const SizedBox(width: 8),
+              const Text(
+                'Filter Sections',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const Spacer(),
+              if (!_currentFilter.isEmpty)
+                TextButton(
+                  onPressed: _clearFilter,
+                  child: const Text(
+                    'Clear All',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Search by lesson title
+          TextField(
+            controller: _lessonTitleController,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Search lesson title...',
+              hintStyle: TextStyle(color: Colors.grey[400]),
+              prefixIcon: const Icon(Icons.search, color: Colors.grey),
+              filled: true,
+              fillColor: const Color(0xFF2C3E50),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              // Level filter
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Level',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2C3E50),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedLevel,
+                          hint: Text(
+                            'Select level',
+                            style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                          ),
+                          dropdownColor: const Color(0xFF2C3E50),
+                          style: const TextStyle(color: Colors.white),
+                          isExpanded: true,
+                          items: [
+                            const DropdownMenuItem<String>(
+                              value: null,
+                              child: Text('All levels'),
+                            ),
+                            ..._levelOptions.map((String level) {
+                              return DropdownMenuItem<String>(
+                                value: level,
+                                child: Text(level),
+                              );
+                            }),
+                          ],
+                          onChanged: (String? value) {
+                            setState(() {
+                              _selectedLevel = value;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 12),
+
+              isAuthenticatedAsync.when(
+                data: (isAuthenticated) {
+                  if (!isAuthenticated) { // <<< ĐIỀU KIỆN QUAN TRỌNG: Nếu CHƯA đăng nhập
+                    return const SizedBox.shrink(); // Ẩn "progress filter"
+                  } else {
+                    return Expanded( // ĐÃ đăng nhập, hiển thị "progress filter"
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Progress',
+                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2C3E50),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedProgress,
+                                hint: Text(
+                                  'Select progress',
+                                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                                ),
+                                dropdownColor: const Color(0xFF2C3E50),
+                                style: const TextStyle(color: Colors.white),
+                                isExpanded: true,
+                                items: [
+                                  const DropdownMenuItem<String>(
+                                    value: null,
+                                    child: Text('All progress'),
+                                  ),
+                                  ..._progressOptions.map((String progress) {
+                                    return DropdownMenuItem<String>(
+                                      value: progress,
+                                      child: Text(_progressLabels[progress] ?? progress),
+                                    );
+                                  }),
+                                ],
+                                onChanged: (String? value) {
+                                  setState(() {
+                                    _selectedProgress = value;
+                                  });
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                },
+                loading: () => const Expanded( // Hiển thị loading cho phần này
+                  child: Center(
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, valueColor: AlwaysStoppedAnimation<Color>(Colors.white70)),
+                    ),
+                  ),
+                ),
+                error: (error, stack) => Expanded(
+                  child: Text(
+                    'Error: ${error.toString()}',
+                    style: const TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Apply button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _applyFilter,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF7FB3D3),
+                foregroundColor: Colors.black,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text(
+                'Apply Filter',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBody() {
+    // ... (Giữ nguyên các phần còn lại của _buildBody và các hàm phụ trợ)
     if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(
@@ -220,24 +568,83 @@ class _SectionListPageState extends State<SectionListPage>
     }
 
     if (_sections.isEmpty) {
-      return const Center(
-        child: Text(
-          'No sections found',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.search_off,
+              size: 64,
+              color: Colors.white54,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              _currentFilter.isEmpty ? 'No sections found' : 'No sections match your filter',
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            if (!_currentFilter.isEmpty) ...[
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: _clearFilter,
+                child: const Text(
+                  'Clear filter',
+                  style: TextStyle(color: Color(0xFF7FB3D3)),
+                ),
+              ),
+            ],
+          ],
         ),
       );
     }
 
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: _sections.length,
-      itemBuilder: (context, index) {
-        final section = _sections[index];
-        return _buildExpandableSectionItem(section);
-      },
-      separatorBuilder: (context, index) {
-        return const SizedBox(height: 8);
-      },
+    return Column(
+      children: [
+        // Results header
+        if (!_currentFilter.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.filter_list,
+                  size: 16,
+                  color: Colors.grey[400],
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Found ${_sections.length} section${_sections.length != 1 ? 's' : ''}',
+                  style: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 14,
+                  ),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: _clearFilter,
+                  child: const Text(
+                    'Clear filter',
+                    style: TextStyle(color: Color(0xFF7FB3D3), fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Sections list
+        Expanded(
+          child: ListView.separated(
+            padding: const EdgeInsets.all(16),
+            itemCount: _sections.length,
+            itemBuilder: (context, index) {
+              final section = _sections[index];
+              return _buildExpandableSectionItem(section);
+            },
+            separatorBuilder: (context, index) {
+              return const SizedBox(height: 8);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -308,7 +715,6 @@ class _SectionListPageState extends State<SectionListPage>
                   ),
                   icon: const Icon(Icons.star, size: 20),
                   label: const Text('Subscribe Now'),
-
                 ),
 
                 const SizedBox(width: 16),

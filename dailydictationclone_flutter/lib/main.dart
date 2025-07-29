@@ -5,7 +5,6 @@ import 'package:dailydictationclone_flutter/screen/topic_list.dart';
 import 'package:dailydictationclone_flutter/screen/upgrade_premium_screen.dart';
 import 'package:dailydictationclone_flutter/service/auth_service.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'locator/locator.dart';
 import 'package:dailydictationclone_flutter/screen/sign_in_screen.dart';

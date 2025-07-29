@@ -1,5 +1,6 @@
 package com.example.userservice.controller;
 
+import com.example.userservice.model.request.SectionProgressFilterRequest;
 import com.example.userservice.model.response.ProgressResponse;
 import com.example.userservice.model.response.UserChallengeDetailResponse;
 import com.example.userservice.model.response.UserLessonProgressDetailResponse;
@@ -59,5 +60,10 @@ public class UserProgressController {
                 .parseClaimsJws(token)
                 .getBody();
         return claims.getSubject();
+    }
+    @PostMapping("/sections/filter")
+    public ResponseEntity<List<Long>> getSectionIdsByProgressFilter(
+            @RequestBody SectionProgressFilterRequest request) {
+       return userProgressService.getSectionIdsByProgressFilter(request);
     }
 }

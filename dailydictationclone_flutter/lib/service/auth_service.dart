@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+
 class AuthService {
   static const String baseUrl = 'http://10.0.2.2:8181/api';
   static const String gatewayUrl = 'http://10.0.2.2:8181'; // API Gateway URL
@@ -28,8 +29,12 @@ class AuthService {
   }
 
   static Future<bool> isAuthenticated() async {
-    final token = await getToken();
-    return token != null && token.isNotEmpty;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    print('AuthService.isAuthenticated() - Token: $token');
+    final bool result = token != null && token.isNotEmpty;
+    print('AuthService.isAuthenticated() - Is authenticated: $result');
+    return result;
   }
 
   static Future<void> clearStoredData() async {
@@ -84,13 +89,97 @@ class AuthService {
     }
   }
 
-  // Sign Up API call
+  // Send OTP API call
+  static Future<OtpResult> sendOtp({
+    required String email,
+    String otpType = 'EMAIL_VERIFICATION',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/send-otp'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'otpType': otpType,
+        }),
+      );
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return OtpResult(
+          success: true,
+          message: data['message'] ?? 'OTP sent successfully',
+          expiresAt: data['expiresAt'],
+        );
+      } else {
+        return OtpResult(
+          success: false,
+          message: data['message'] ?? 'Failed to send OTP',
+          errorCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return OtpResult(
+        success: false,
+        message: 'Network error. Please check your connection.',
+        errorCode: 0,
+      );
+    }
+  }
+
+  // Verify OTP API call
+  static Future<OtpResult> verifyOtp({
+    required String email,
+    required String otpCode,
+    String otpType = 'EMAIL_VERIFICATION',
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/verify-otp'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'email': email,
+          'otpCode': otpCode,
+          'otpType': otpType,
+        }),
+      );
+
+      final Map<String, dynamic> data = jsonDecode(response.body);
+
+      if (response.statusCode == 200) {
+        return OtpResult(
+          success: true,
+          message: data['message'] ?? 'OTP verified successfully',
+        );
+      } else {
+        return OtpResult(
+          success: false,
+          message: data['message'] ?? 'Invalid OTP code',
+          errorCode: response.statusCode,
+        );
+      }
+    } catch (e) {
+      return OtpResult(
+        success: false,
+        message: 'Network error. Please check your connection.',
+        errorCode: 0,
+      );
+    }
+  }
+
+  // Sign Up API call with OTP
   static Future<AuthResult> signUp({
     required String username,
     required String password,
     required String fullName,
     required String phone,
     required String email,
+    required String otpCode,
   }) async {
     try {
       final response = await http.post(
@@ -104,6 +193,7 @@ class AuthService {
           'fullName': fullName,
           'phone': phone,
           'email': email,
+          'otpCode': otpCode,
         }),
       );
 
@@ -143,7 +233,6 @@ class AuthService {
 
   static Future<AuthResult> signInWithGoogle() async {
     try {
-
       final GoogleSignInAccount? currentUser = _googleSignIn.currentUser;
 
       if (currentUser != null) {
@@ -185,7 +274,6 @@ class AuthService {
 
   static Future<AuthResult> _authenticateWithGoogleUserInfo(String email, String displayName) async {
     try {
-
       final response = await http.post(
         Uri.parse('$baseUrl/auth/oauth2-login'),
         headers: {
@@ -196,7 +284,6 @@ class AuthService {
           'displayName': displayName,
         }),
       );
-
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         final data = jsonDecode(response.body);
@@ -226,7 +313,6 @@ class AuthService {
   }
 }
 
-
 class AuthResult {
   final bool success;
   final String message;
@@ -237,6 +323,20 @@ class AuthResult {
     required this.success,
     required this.message,
     this.data,
+    this.errorCode,
+  });
+}
+
+class OtpResult {
+  final bool success;
+  final String message;
+  final String? expiresAt;
+  final int? errorCode;
+
+  OtpResult({
+    required this.success,
+    required this.message,
+    this.expiresAt,
     this.errorCode,
   });
 }

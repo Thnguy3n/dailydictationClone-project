@@ -66,6 +66,7 @@ public class QRTransactionServiceImpl implements QRTransactionService {
         qrTransactionEntity.setQrDataUrl(qrResponse.getData().getQrDataURL());
         qrTransactionRepository.save(qrTransactionEntity);
         qrResponse.setId(qrTransactionEntity.getId());
+        qrResponse.setAddInfo(qrTransactionEntity.getAddInfo());
         qrResponse.setExpireAt(qrTransactionEntity.getExpiresAt());
         return ResponseEntity.ok(qrResponse);
     }
@@ -126,7 +127,7 @@ public class QRTransactionServiceImpl implements QRTransactionService {
                 BankTransactionResponse bankResponse = response.getBody();
 
                 if (!bankResponse.isError() && bankResponse.getData() != null && !bankResponse.getData().isEmpty()) {
-                    TransactionDetail latestTransaction = bankResponse.getData().get(1);
+                    TransactionDetail latestTransaction = bankResponse.getData().get(0);
 
                     if (isTransactionMatched(latestTransaction, qrTransaction)) {
                         return new PaymentStatusResponse(
@@ -158,10 +159,10 @@ public class QRTransactionServiceImpl implements QRTransactionService {
                                          QrTransactionEntity qrTransaction) {
         String expectedDescription = qrTransaction.getAddInfo(); // "Payment for: UUID"
         String actualDescription = transaction.getDescription();
-        int paymentIndex = actualDescription.indexOf("Payment");
+        int paymentIndex = actualDescription.indexOf("Payment for ");
 
         String result = (paymentIndex != -1)
-                ? actualDescription.substring(paymentIndex)
+                ? actualDescription.substring(paymentIndex, Math.min(paymentIndex + 20, actualDescription.length()))
                 : "";
 
         BigDecimal expectedAmount = qrTransaction.getPurchase().getPrice();
@@ -222,7 +223,6 @@ public class QRTransactionServiceImpl implements QRTransactionService {
                 break;
             } catch (Exception e) {
                 log.error("Error during payment monitoring", e);
-                // Tiếp tục monitoring
             }
         }
 

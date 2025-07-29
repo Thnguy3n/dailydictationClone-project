@@ -1,5 +1,6 @@
 package com.example.audioservice.controller;
 
+import com.example.audioservice.model.Request.SectionFilter;
 import com.example.audioservice.model.Request.SectionRequest;
 import com.example.audioservice.model.Response.SectionResponse;
 import com.example.audioservice.service.SectionService;
@@ -27,6 +28,18 @@ public class SectionController {
     @PostMapping("/add")
     public ResponseEntity<SectionResponse> addSection(@RequestBody SectionRequest request) {
         return sectionService.addSection(request);
+    }
+    @PostMapping("/filter")
+    public ResponseEntity<List<SectionResponse>> getSectionsByFilter(@RequestBody SectionFilter filter,
+                                                                     @RequestParam Long topicId,
+                                                                     HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header == null || header.trim().isEmpty() || !header.startsWith("Bearer ")) {
+            return sectionService.getSectionsByFilter(filter, topicId);
+        }
+        String token = header.substring(7);
+        String username = getUsernameFromToken(token);
+        return sectionService.getSectionsByFilterWithAuthenticated(filter, topicId, username);
     }
     @GetMapping("/list")
     public ResponseEntity<List<SectionResponse>> getAllSections(@RequestParam Long topicId,

@@ -1,8 +1,10 @@
 package com.example.userservice.service.Impl;
 
+import com.example.userservice.constants.SectionProgressStatus;
 import com.example.userservice.entity.UserChallengeProgressEntity;
 import com.example.userservice.entity.UserChallengeProgressJobs;
 import com.example.userservice.entity.UserEntity;
+import com.example.userservice.model.request.SectionProgressFilterRequest;
 import com.example.userservice.model.response.*;
 import com.example.userservice.repository.UserChallengeJobRepository;
 import com.example.userservice.repository.UserChallengeProgressRepository;
@@ -188,6 +190,93 @@ public class UserChallengeProgressServiceImpl implements UserChallengeProgressSe
         return ResponseEntity.ok(progressResponse);
     }
 
+    @Override
+    public ResponseEntity<List<Long>> getSectionIdsByProgressFilter(SectionProgressFilterRequest request) {
+        try {
+            UserEntity user = userRepository.findByUsername(request.getUsername());
+            if (user == null) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+
+            List<Long> filteredSectionIds = new ArrayList<>();
+
+            for (Long sectionId : request.getSectionIds()) {
+                List<LessonInfo> lessons = getLessonsInSection(sectionId);
+
+                if (lessons.isEmpty()) {
+                    continue;
+                }
+
+                SectionProgressStatus status = calculateSectionProgress(user.getId(), lessons);
+
+                if (matchesProgressFilter(status, request.getProgressFilter())) {
+                    filteredSectionIds.add(sectionId);
+                }
+            }
+
+            return ResponseEntity.ok(filteredSectionIds);
+        } catch (Exception e) {
+            log.error("Error filtering sections by progress: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    private List<LessonInfo> getLessonsInSection(Long sectionId) {
+        try {
+            String url = "http://audio-service/api/lessons/sections/" + sectionId + "/info";
+            ResponseEntity<List<LessonInfo>> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List<LessonInfo>>() {}
+            );
+            return response.getBody() != null ? response.getBody() : Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Error getting lessons for section: {}", sectionId, e);
+            return Collections.emptyList();
+        }
+    }
+
+    private SectionProgressStatus calculateSectionProgress(String userId, List<LessonInfo> lessons) {
+        int totalLessons = lessons.size();
+        int completedLessons = 0;
+        int inProgressLessons = 0;
+
+        for (LessonInfo lesson : lessons) {
+            List<Long> challengeIds = lesson.getChallengeIds();
+            if (challengeIds == null || challengeIds.isEmpty()) {
+                continue;
+            }
+
+            Long attemptedChallenges = userChallengeProgressRepository
+                    .countDistinctChallengeIdByUserIdAndChallengeIdIn(userId, challengeIds);
+            Long completedChallenges = userChallengeProgressRepository
+                    .countDistinctByUserIdAndIsCompletedAndChallengeIdIn(userId, 1, challengeIds);
+
+            if (attemptedChallenges == 0) {
+                // Not started
+            } else if (completedChallenges.equals((long) challengeIds.size())) {
+                completedLessons++;
+            } else {
+                inProgressLessons++;
+            }
+        }
+
+        if (completedLessons == totalLessons && totalLessons > 0) {
+            return SectionProgressStatus.COMPLETED;
+        } else if (inProgressLessons > 0 || completedLessons > 0) {
+            return SectionProgressStatus.IN_PROGRESS;
+        } else {
+            return SectionProgressStatus.NOT_STARTED;
+        }
+    }
+
+    private boolean matchesProgressFilter(SectionProgressStatus status, String progressFilter) {
+        if (progressFilter == null || progressFilter.isEmpty()) {
+            return true;
+        }
+
+        return status.name().equals(progressFilter.toUpperCase());
+    }
     private UserChallengeDetailResponse calculateChallengeDetail(String userId, ChallengeInfo challengeInfo) {
         UserChallengeProgressEntity progress = userChallengeProgressRepository
                 .findByChallengeIdAndUserId(challengeInfo.getId(), userId);

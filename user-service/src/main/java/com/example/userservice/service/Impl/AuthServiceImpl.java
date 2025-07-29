@@ -1,25 +1,25 @@
 package com.example.userservice.service.Impl;
 
+import com.example.userservice.constants.OtpType;
 import com.example.userservice.entity.UserEntity;
 import com.example.userservice.model.request.OAuth2LoginRequest;
+import com.example.userservice.model.request.SendOtpRequest;
 import com.example.userservice.model.request.UserRequest;
-import com.example.userservice.model.response.AuthResponse;
+import com.example.userservice.model.request.VerifyOtpRequest;
 import com.example.userservice.model.response.OAuthResponse;
+import com.example.userservice.model.response.OtpResponse;
 import com.example.userservice.model.response.UserResponse;
 import com.example.userservice.repository.UserRepository;
 import com.example.userservice.service.AuthService;
 import com.example.userservice.service.JwtService;
+import com.example.userservice.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +27,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final BCryptPasswordEncoder bCryptPasswordEncoder =  new BCryptPasswordEncoder(12);
     private final JwtService jwtService;
+    private final OtpService otpService;
 
     @Override
     public ResponseEntity<UserResponse> registerUser(UserRequest userRequest) {
@@ -35,6 +36,19 @@ public class AuthServiceImpl implements AuthService {
                     .message("Username or Email already exists")
                     .build(), HttpStatus.BAD_REQUEST);
         }
+
+        VerifyOtpRequest otpRequest = VerifyOtpRequest.builder()
+                .email(userRequest.getEmail())
+                .otpCode(userRequest.getOtpCode())
+                .otpType(OtpType.EMAIL_VERIFICATION)
+                .build();
+
+        if (otpService.verifyOtp(otpRequest)) {
+            return new ResponseEntity<>(UserResponse.builder()
+                    .message("Invalid or expired OTP code")
+                    .build(), HttpStatus.BAD_REQUEST);
+        }
+
         UserEntity userEntity = UserEntity.builder()
                 .username(userRequest.getUsername())
                 .password(bCryptPasswordEncoder.encode(userRequest.getPassword()))
@@ -84,6 +98,34 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    @Override
+    public ResponseEntity<OtpResponse> sendOtpForEmailVerification(SendOtpRequest request) {
+        // Check if email already exists for EMAIL_VERIFICATION type
+        if (request.getOtpType() == OtpType.EMAIL_VERIFICATION &&
+                userRepository.existsByEmail(request.getEmail())) {
+            return new ResponseEntity<>(OtpResponse.builder()
+                    .message("Email already registered")
+                    .success(false)
+                    .build(), HttpStatus.BAD_REQUEST);
+        }
 
+        OtpResponse response = otpService.sendOtp(request);
+        HttpStatus status = response.isSuccess() ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+
+        return new ResponseEntity<>(response, status);
+    }
+
+    @Override
+    public ResponseEntity<OtpResponse> verifyEmailOtp(VerifyOtpRequest request) {
+        boolean isValid = otpService.verifyOtp(request);
+
+        OtpResponse response = OtpResponse.builder()
+                .message(isValid ? "OTP verified successfully" : "Invalid or expired OTP")
+                .success(isValid)
+                .build();
+
+        HttpStatus status = isValid ? HttpStatus.OK : HttpStatus.BAD_REQUEST;
+        return new ResponseEntity<>(response, status);
+    }
 
 }

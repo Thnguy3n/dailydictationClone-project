@@ -14,4 +14,6 @@ public interface LessonService {
     ResponseEntity<String> audioPath(MultipartFile file) throws IOException;
     ResponseEntity<List<LessonInfo>> getAllLessonsWithChallenge();
     ResponseEntity<LessonInfo> getLessonInfo(Long lessonId);
+
+    ResponseEntity<List<LessonInfo>> getLessonsBySectionId(Long sectionId);
 }

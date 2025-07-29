@@ -2,15 +2,17 @@ import 'package:dailydictationclone_flutter/nav/app_bottom_navigation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../service/auth_service.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../provider/auth_providers.dart';
 
-class SignInScreen extends StatefulWidget {
+class SignInScreen extends ConsumerStatefulWidget  {
   const SignInScreen({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  ConsumerState<SignInScreen> createState() => _SignInScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _SignInScreenState extends ConsumerState<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -46,7 +48,8 @@ class _SignInScreenState extends State<SignInScreen> {
 
     if (result.success) {
       // Navigate to main app or onboarding
-      if (mounted) {
+      ref.invalidate(authStatusProvider);
+      if(mounted){
         Navigator.pushReplacementNamed(context, '/topics');
       }
     } else {
@@ -89,6 +92,7 @@ class _SignInScreenState extends State<SignInScreen> {
       });
 
       if (result.success) {
+        ref.invalidate(authStatusProvider);
         // Show success message
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

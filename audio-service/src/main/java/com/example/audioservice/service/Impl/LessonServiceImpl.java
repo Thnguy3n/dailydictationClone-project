@@ -11,6 +11,7 @@ import com.example.audioservice.service.LessonService;
 import com.google.cloud.storage.*;
 import com.google.firebase.cloud.StorageClient;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -24,11 +25,13 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class LessonServiceImpl implements LessonService {
     private final LessonRepository lessonRepository;
     private final SectionRepository sectionRepository;
@@ -131,5 +134,36 @@ public class LessonServiceImpl implements LessonService {
         return ResponseEntity.ok(lessonInfo);
     }
 
+    @Override
+    public ResponseEntity<List<LessonInfo>> getLessonsBySectionId(Long sectionId) {
+        try {
+            Optional<SectionEntity> sectionOpt = sectionRepository.findById(sectionId);
+            if (sectionOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            SectionEntity section = sectionOpt.get();
+
+            List<LessonInfo> lessonInfos = section.getLessonEntities().stream()
+                    .map(this::convertToLessonInfo)
+                    .collect(Collectors.toList());
+
+            return ResponseEntity.ok(lessonInfos);
+
+        } catch (Exception e) {
+            log.error("Error getting lessons for section {}: {}", sectionId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+    private LessonInfo convertToLessonInfo(LessonEntity lesson) {
+        List<Long> challengeIds = lesson.getChallengeEntities().stream()
+                .map(ChallengeEntity::getId)
+                .collect(Collectors.toList());
+        LessonInfo lessonInfo = new LessonInfo();
+        lessonInfo.setId(lesson.getId());
+        lessonInfo.setTitle(lesson.getTitle());
+        lessonInfo.setChallengeIds(challengeIds);
+        return lessonInfo;
+    }
 
 }

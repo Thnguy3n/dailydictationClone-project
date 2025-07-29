@@ -13,6 +13,7 @@ public class QrResponse {
     private Long id;
     private String code;
     private String description;
+    private String addInfo;
     private LocalDateTime expireAt;
     private com.example.paymentservice.model.response.Data data;
 
