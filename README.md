@@ -25,7 +25,7 @@ root/
 
 - **Learning**: Topics → Sections → Lessons → Challenges; nghe audio và nhập đáp án; nhiều tốc độ phát; theo dõi **progress** chi tiết.
 - **Audio pipeline**: Upload audio → **AssemblyAI** transcribe → tạo từ/đáp án chấp nhận → **FFmpeg** cắt segment → lưu metadata + URL → phát trực tuyến.
-- **Premium**: gói đăng ký; thanh toán QR; cập nhật trạng thái premium theo thời gian thực.
+- **Premium**: gói đăng ký; thanh toán QR; quản lý dòng tiền thông qua CASSO; cập nhật trạng thái premium theo thời gian thực.
 - **Auth**: Google Sign‑In; **JWT**; phân quyền tính năng premium.
 - **Cross‑platform**: Flutter (mobile/web) & ReactJS (web client).
 
