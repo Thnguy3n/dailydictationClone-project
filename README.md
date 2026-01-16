@@ -1,5 +1,6 @@
 # dailydictationClone-project
 VIDEO DEMO: https://www.youtube.com/watch?v=ODp1OA0uQF8&list=PLRawx3CjGdI80lxda0ePITVyRPSelK6-I
+![unnamed (1)](https://github.com/user-attachments/assets/3e362359-eabf-472c-9933-0cf563dd35ca)
 
 # English Listening Practice System (Daily Dictation Clone)
 
