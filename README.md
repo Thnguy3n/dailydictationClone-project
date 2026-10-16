@@ -4,11 +4,11 @@ VIDEO DEMO: https://www.youtube.com/watch?v=ODp1OA0uQF8&list=PLRawx3CjGdI80lxda0
 
 # English Listening Practice System (Daily Dictation Clone)
 
-Nền tảng luyện nghe/chính tả tiếng Anh theo **challenges**; frontend **Flutter**, backend **Spring Boot microservices**; hạ tầng **PostgreSQL + Kafka + Firebase Storage**. Hỗ trợ **đăng nhập Google, JWT**, theo dõi tiến độ học và **thanh toán QR** cho gói premium.
+Nền tảng luyện nghe/chính tả tiếng Anh theo **challenges**; frontend **Flutter**, backend **Spring Boot microservices**; hạ tầng **PostgreSQL + Firebase Storage**. Hỗ trợ **đăng nhập Google, JWT**, theo dõi tiến độ học và **thanh toán QR** cho gói premium.
 
 ## 1) Kiến trúc tổng quan
 
-Microservices: **API Gateway**, **Discovery (Eureka)**, **User Service**, **Audio Service**, **Payment Service**. Giao tiếp REST; xử lý bất đồng bộ qua **Kafka**. Lưu trữ media trên **Firebase Storage**; đóng gói bằng **Docker**.
+Microservices: **API Gateway**, **Discovery (Eureka)**, **User Service**, **Audio Service**, **Payment Service**. Giao tiếp REST; xử lý bất đồng bộ qua **message queue**. Lưu trữ media trên **Firebase Storage**; đóng gói bằng **Docker**.
 
 ```
 root/
@@ -18,7 +18,8 @@ root/
  │   ├─ user-service/
  │   ├─ audio-service/
  │   └─ payment-service/
- ├─ infra/ (docker-compose: postgres, kafka, zookeeper, firebase emulators?)
+ ├─ infra/ (docker-compose: postgres, message queue
+, zookeeper, firebase emulators?)
  └─ clients/ (flutter, reactjs)
 ```
 
@@ -32,7 +33,8 @@ root/
 
 ## 3) Công nghệ
 
-- **Backend**: Java 21, Spring Boot 3.x, Spring Cloud (Gateway, Eureka, LoadBalancer), Spring Security (JWT), Spring Data JPA (PostgreSQL), **Kafka**, Firebase Admin SDK, **FFmpeg**, AssemblyAI.
+- **Backend**: Java 21, Spring Boot 3.x, Spring Cloud (Gateway, Eureka, LoadBalancer), Spring Security (JWT), Spring Data JPA (PostgreSQL), **message queue
+- **, Firebase Admin SDK, **FFmpeg**, AssemblyAI.
 - **Frontend**: Flutter 3.x (Riverpod, Dio/HTTP, AudioPlayers), ReactJS.
 - **DevOps**: Docker & Docker Compose, Maven
 
